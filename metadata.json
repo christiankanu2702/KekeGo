@@ -1,0 +1,6 @@
+{
+  "name": "KekeGo",
+  "description": "Statewide commercial tricycle transport, digital waybills, and local logistics across all 17 LGAs of Abia State, Nigeria.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

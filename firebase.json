@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-android-kekego-8d15e975-a199-49d5-bae1-d307d11a7ac4",
+      "rules": "firestore.rules"
+    }
+  ]
+}

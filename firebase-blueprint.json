@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "User": {
+      "path": "users/{userId}",
+      "fields": {
+        "userId": "string",
+        "email": "string",
+        "displayName": "string",
+        "phone": "string",
+        "role": "string",
+        "lgaZone": "string",
+        "walletBalance": "number",
+        "vaultBalance": "number",
+        "statePermitId": "string",
+        "unionBranchCode": "string",
+        "chassisNumber": "string",
+        "serviceFilter": "string",
+        "creditFloatBalance": "number"
+      }
+    },
+    "Trip": {
+      "path": "trips/{tripId}",
+      "fields": {
+        "tripId": "string",
+        "passengerId": "string",
+        "passengerName": "string",
+        "driverId": "string",
+        "driverName": "string",
+        "serviceType": "string",
+        "status": "string",
+        "originName": "string",
+        "destinationName": "string",
+        "lgaZone": "string",
+        "proposedFare": "number",
+        "agreedFare": "number",
+        "cargoUnits": "number",
+        "waitMinutes": "number",
+        "waybillOtp": "string",
+        "recipientPhone": "string",
+        "createdAt": "number"
+      }
+    },
+    "Bid": {
+      "path": "bids/{bidId}",
+      "fields": {
+        "bidId": "string",
+        "tripId": "string",
+        "driverId": "string",
+        "driverName": "string",
+        "offeredFare": "number",
+        "status": "string",
+        "createdAt": "number"
+      }
+    },
+    "Dispute": {
+      "path": "disputes/{disputeId}",
+      "fields": {
+        "disputeId": "string",
+        "tripId": "string",
+        "reportedBy": "string",
+        "reason": "string",
+        "status": "string",
+        "timestamp": "number"
+      }
+    },
+    "SosAlert": {
+      "path": "sos_alerts/{sosId}",
+      "fields": {
+        "sosId": "string",
+        "userId": "string",
+        "userRole": "string",
+        "lgaZone": "string",
+        "lat": "number",
+        "lng": "number",
+        "operationalLog": "string",
+        "timestamp": "number"
+      }
+    }
+  }
+}
