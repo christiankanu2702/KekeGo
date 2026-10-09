@@ -5,9 +5,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,6 +110,8 @@ fun PassengerScreen(
     // Dialog state
     var showBookingSuccessDialog by remember { mutableStateOf<String?>(null) }
     var showPaystackDialog by remember { mutableStateOf(false) }
+    var showRequestBottomSheet by remember { mutableStateOf(false) }
+    var showPastTripsSheet by remember { mutableStateOf(false) }
 
     // Recalculate proposed fare baseline when cargo changes
     LaunchedEffect(cargoSacks, cargoBasins, isWaitAndReturn, waitMinutes) {
@@ -121,6 +126,16 @@ fun PassengerScreen(
 
     Scaffold(
         containerColor = AsphaltBlack,
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { showRequestBottomSheet = true },
+                containerColor = SafetyAmber,
+                contentColor = AsphaltDark,
+                icon = { Icon(Icons.Default.ElectricRickshaw, contentDescription = null) },
+                text = { Text("Request Keke", fontWeight = FontWeight.Black) },
+                modifier = Modifier.testTag("request_keke_fab")
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -140,6 +155,18 @@ fun PassengerScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = AsphaltDark),
                 actions = {
+                    // Past Trips History Log Button
+                    IconButton(
+                        onClick = { showPastTripsSheet = true },
+                        modifier = Modifier.testTag("open_past_trips_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Past Trips Log",
+                            tint = SafetyAmber
+                        )
+                    }
+
                     // Wallet Balance Quick Action
                     TextButton(
                         onClick = onNavigateToWallet,
@@ -181,11 +208,15 @@ fun PassengerScreen(
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                // Interactive Google Maps Transit Canvas
-                TransitMapCompose(
-                    selectedLgaId = selectedOriginLga,
+                // Interactive Google Maps SDK View for Abia State Route
+                GoogleTransitMapView(
                     originMarket = selectedOriginMarket,
+                    originLgaId = selectedOriginLga,
                     destinationMarket = selectedDestMarket,
+                    destinationLgaId = selectedDestLga,
+                    intermediateStops = intermediateStops,
+                    userLiveLat = if (isLiveGpsLocked) liveLat else null,
+                    userLiveLng = if (isLiveGpsLocked) liveLng else null,
                     onMarketSelected = { selectedDestMarket = it }
                 )
 
@@ -248,6 +279,73 @@ fun PassengerScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Fast Request Bottom Sheet Launcher Banner
+                Surface(
+                    color = SafetyAmber.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SafetyAmber.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showRequestBottomSheet = true }
+                        .testTag("open_request_bottom_sheet_banner")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .background(SafetyAmber, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DirectionsTransit,
+                                    contentDescription = null,
+                                    tint = AsphaltDark,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Book Ride / Waybill via Bottom Sheet",
+                                    color = HighContrastWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = "Pick origin, drop-off, stops & estimate fare",
+                                    color = SafetyAmberLight,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        FilledTonalButton(
+                            onClick = { showRequestBottomSheet = true },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = SafetyAmber,
+                                contentColor = AsphaltDark
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Open Sheet", fontSize = 11.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
             }
 
             // Service Mode Switcher
@@ -300,18 +398,59 @@ fun PassengerScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                            text = "Abia Transit Route",
+                            text = "Abia Transit Route (Pick-up & Drop-off)",
                             style = MaterialTheme.typography.titleMedium,
                             color = HighContrastWhite,
                             fontWeight = FontWeight.Bold
                         )
+                        Text(
+                            text = "Connected across all 17 LGAs via Google Maps SDK",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MutedSilver,
+                            fontSize = 11.sp
+                        )
                         Spacer(modifier = Modifier.height(10.dp))
+
+                        // Origin Pick-up LGA & Market Quick Selectors
+                        Text(
+                            text = "PICK-UP POINT (ORIGIN)",
+                            color = EmeraldGreenLight,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Origin LGA Quick Selector Chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("aba_south" to "Aba South", "aba_north" to "Aba North", "umuahia_north" to "Umuahia N", "osisioma" to "Osisioma").forEach { (lgaId, lgaLabel) ->
+                                FilterChip(
+                                    selected = selectedOriginLga == lgaId,
+                                    onClick = {
+                                        selectedOriginLga = lgaId
+                                        val firstMarket = AbiaCorridorData.getLgaById(lgaId)?.keyMarketsAndJunctions?.firstOrNull()
+                                        if (firstMarket != null) selectedOriginMarket = firstMarket
+                                    },
+                                    label = { Text(lgaLabel, fontSize = 10.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = EmeraldGreen,
+                                        selectedLabelColor = AsphaltDark,
+                                        containerColor = AsphaltCard,
+                                        labelColor = HighContrastWhite
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         // Origin Selector
                         OutlinedTextField(
                             value = selectedOriginMarket,
                             onValueChange = { selectedOriginMarket = it },
-                            label = { Text("Pickup Hub / Market (Aba South)", color = MutedSilver) },
+                            label = { Text("Pick-up Market/Junction (${AbiaCorridorData.getLgaById(selectedOriginLga)?.name})", color = MutedSilver) },
                             leadingIcon = { Icon(Icons.Default.Place, contentDescription = null, tint = EmeraldGreen) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = HighContrastWhite,
@@ -322,13 +461,48 @@ fun PassengerScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Destination Drop-off LGA & Market Quick Selectors
+                        Text(
+                            text = "DROP-OFF POINT (DESTINATION)",
+                            color = SafetyAmber,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Destination LGA Quick Selector Chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("aba_north" to "Aba North", "aba_south" to "Aba South", "umuahia_south" to "Umuahia S", "ikwuano" to "Ikwuano").forEach { (lgaId, lgaLabel) ->
+                                FilterChip(
+                                    selected = selectedDestLga == lgaId,
+                                    onClick = {
+                                        selectedDestLga = lgaId
+                                        val firstMarket = AbiaCorridorData.getLgaById(lgaId)?.keyMarketsAndJunctions?.firstOrNull()
+                                        if (firstMarket != null) selectedDestMarket = firstMarket
+                                    },
+                                    label = { Text(lgaLabel, fontSize = 10.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = SafetyAmber,
+                                        selectedLabelColor = AsphaltDark,
+                                        containerColor = AsphaltCard,
+                                        labelColor = HighContrastWhite
+                                    )
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         // Destination Selector
                         OutlinedTextField(
                             value = selectedDestMarket,
                             onValueChange = { selectedDestMarket = it },
-                            label = { Text("Destination Hub / Market (Aba North)", color = MutedSilver) },
+                            label = { Text("Drop-off Market/Junction (${AbiaCorridorData.getLgaById(selectedDestLga)?.name})", color = MutedSilver) },
                             leadingIcon = { Icon(Icons.Default.Place, contentDescription = null, tint = SafetyAmber) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = HighContrastWhite,
@@ -605,6 +779,66 @@ fun PassengerScreen(
                         fontWeight = FontWeight.Black
                     )
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Past Trips History Card
+                Surface(
+                    color = AsphaltCard,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AsphaltDivider),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showPastTripsSheet = true }
+                        .testTag("open_past_trips_banner")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SafetyAmber.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = SafetyAmber,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Past Tricycle Trips & Waybill Logs",
+                                    color = HighContrastWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = "${cachedTrips.size} logged trips synced from Firestore",
+                                    color = MutedSilver,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Open Log",
+                            tint = SafetyAmber,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
@@ -667,6 +901,88 @@ fun PassengerScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen, contentColor = AsphaltDark)
                 ) {
                     Text("Understood")
+                }
+            }
+        )
+    }
+
+    if (showRequestBottomSheet) {
+        KekeRequestBottomSheet(
+            onDismissRequest = { showRequestBottomSheet = false },
+            initialOriginLga = selectedOriginLga,
+            initialOriginMarket = selectedOriginMarket,
+            initialDestLga = selectedDestLga,
+            initialDestMarket = selectedDestMarket,
+            initialServiceMode = selectedServiceMode,
+            initialIntermediateStops = intermediateStops,
+            userLiveLat = if (isLiveGpsLocked) liveLat else null,
+            userLiveLng = if (isLiveGpsLocked) liveLng else null,
+            onConfirmRequest = { mode, origLga, origMarket, dstLga, dstMarket, stops, fare, note ->
+                selectedServiceMode = mode
+                selectedOriginLga = origLga
+                selectedOriginMarket = origMarket
+                selectedDestLga = dstLga
+                selectedDestMarket = dstMarket
+                intermediateStops = stops
+                proposedFareNaira = fare
+                showRequestBottomSheet = false
+
+                coroutineScope.launch {
+                    val tripId = repository.createTripBooking(
+                        serviceMode = mode,
+                        originLga = origLga,
+                        originMarket = origMarket,
+                        destLga = dstLga,
+                        destMarket = dstMarket,
+                        intermediateStops = stops,
+                        proposedFare = fare,
+                        cargoSacks = cargoSacks,
+                        cargoBasins = cargoBasins,
+                        isWaitAndReturn = isWaitAndReturn,
+                        waitMinutes = waitMinutes,
+                        recipientName = recipientName,
+                        recipientPhone = recipientPhone,
+                        isRecurring = isRecurringDaily
+                    )
+                    showBookingSuccessDialog = tripId
+                }
+            }
+        )
+    }
+
+    if (showPastTripsSheet) {
+        PastTripsLogSheet(
+            repository = repository,
+            onDismissRequest = { showPastTripsSheet = false },
+            onBookAgain = { rebookTrip ->
+                selectedOriginLga = rebookTrip.originLgaId
+                selectedOriginMarket = rebookTrip.originMarket
+                selectedDestLga = rebookTrip.destinationLgaId
+                selectedDestMarket = rebookTrip.destinationMarket
+                selectedServiceMode = rebookTrip.serviceMode
+                intermediateStops = rebookTrip.intermediateStops
+                proposedFareNaira = rebookTrip.finalAgreedFareNaira
+                cargoSacks = rebookTrip.cargoSacks
+                cargoBasins = rebookTrip.cargoBasins
+                showPastTripsSheet = false
+
+                coroutineScope.launch {
+                    val tripId = repository.createTripBooking(
+                        serviceMode = rebookTrip.serviceMode,
+                        originLga = rebookTrip.originLgaId,
+                        originMarket = rebookTrip.originMarket,
+                        destLga = rebookTrip.destinationLgaId,
+                        destMarket = rebookTrip.destinationMarket,
+                        intermediateStops = rebookTrip.intermediateStops,
+                        proposedFare = rebookTrip.finalAgreedFareNaira,
+                        cargoSacks = rebookTrip.cargoSacks,
+                        cargoBasins = rebookTrip.cargoBasins,
+                        isWaitAndReturn = rebookTrip.isWaitAndReturn,
+                        waitMinutes = rebookTrip.waitMinutes,
+                        recipientName = rebookTrip.waybillRecipientName,
+                        recipientPhone = rebookTrip.waybillRecipientPhone
+                    )
+                    showBookingSuccessDialog = tripId
                 }
             }
         )

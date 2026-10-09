@@ -189,4 +189,74 @@ object AbiaCorridorData {
     )
 
     fun getLgaById(id: String): LgaZone? = ALL_17_LGAS.find { it.id == id }
+
+    fun findNearestLga(lat: Double, lng: Double): LgaZone? {
+        return ALL_17_LGAS.minByOrNull { lga ->
+            val dLat = lga.centerLat - lat
+            val dLng = lga.centerLng - lng
+            dLat * dLat + dLng * dLng
+        }
+    }
+
+    data class MarketCoord(
+        val marketName: String,
+        val lgaId: String,
+        val lgaName: String,
+        val lat: Double,
+        val lng: Double,
+        val description: String = "Tricycle Park & Terminal"
+    )
+
+    // Curated high-precision coordinates for primary transit landmarks & market corridors across Abia State
+    val POPULAR_MARKET_COORDS = listOf(
+        MarketCoord("Ariaria International Market", "aba_north", "Aba North", 5.1388, 7.3465, "West Africa trade hub, Faulks Road Keke stage"),
+        MarketCoord("Brass Junction", "aba_north", "Aba North", 5.1275, 7.3620, "Faulks / Aba-Owerri road commercial intersection"),
+        MarketCoord("Faulks Road", "aba_north", "Aba North", 5.1340, 7.3550, "Ariaria expressway feeder & leather goods sector"),
+        MarketCoord("Eziama High School Junction", "aba_north", "Aba North", 5.1410, 7.3710, "Ogbor Hill northern link"),
+        MarketCoord("Ahia Ohuru (New Market)", "aba_south", "Aba South", 5.1054, 7.3725, "Ngwa road textile & produce loading depot"),
+        MarketCoord("Bata Junction", "aba_south", "Aba South", 5.1118, 7.3689, "Central city crossroads, factory road connecting line"),
+        MarketCoord("Cemetery Market", "aba_south", "Aba South", 5.1180, 7.3790, "Foodstuffs and pharmaceutical wholesale park"),
+        MarketCoord("Ngwa Road Market", "aba_south", "Aba South", 5.0990, 7.3750, "South Aba commuter hub & grain market"),
+        MarketCoord("Main Park", "aba_south", "Aba South", 5.1160, 7.3650, "Intercity and state transit master terminal"),
+        MarketCoord("Isi-Gate Central Terminal", "umuahia_north", "Umuahia North", 5.5265, 7.4912, "Umuahia capital nucleus, railway crossing stage"),
+        MarketCoord("FMC Umuahia", "umuahia_north", "Umuahia North", 5.5340, 7.4850, "Federal Medical Centre gate tricycle rank"),
+        MarketCoord("Government House Junction", "umuahia_north", "Umuahia North", 5.5410, 7.4960, "State administrative district terminal"),
+        MarketCoord("Bende Road Park", "umuahia_north", "Umuahia North", 5.5290, 7.5020, "Gateway park towards Item, Bende, Ohafia"),
+        MarketCoord("Ubani International Market", "umuahia_south", "Umuahia South", 5.4650, 7.4520, "Modern relocated capital foodstuff hypermarket"),
+        MarketCoord("Ubakala Junction", "umuahia_south", "Umuahia South", 5.4520, 7.4720, "Enugu-Port Harcourt expressway feeder rank"),
+        MarketCoord("Old Umuahia Road", "umuahia_south", "Umuahia South", 5.4850, 7.4680, "Heritage corridor transit park"),
+        MarketCoord("Amakama Park", "umuahia_south", "Umuahia South", 5.4410, 7.4810, "Southern peri-urban tricycle interchange"),
+        MarketCoord("Osisioma Flyover Junction", "osisioma", "Osisioma Ngwa", 5.1580, 7.3240, "Major Aba gateway junction & interchange flyover"),
+        MarketCoord("NNPC Depot Gate", "osisioma", "Osisioma Ngwa", 5.1720, 7.3150, "Industrial depot loading zone"),
+        MarketCoord("Ariaria Tollgate Express", "osisioma", "Osisioma Ngwa", 5.1480, 7.3320, "Expressway junction for interstate commuters"),
+        MarketCoord("Abayi Park", "osisioma", "Osisioma Ngwa", 5.1410, 7.3390, "Abayi residential & commercial keke station"),
+        MarketCoord("Opobo Junction Express", "obingwa", "Obingwa", 5.1050, 7.4320, "Ogbor Hill connecting node to Akwa Ibom"),
+        MarketCoord("Asa Nnentu Auto-Spareparts Market", "ugwunagbo", "Ugwunagbo", 5.0450, 7.3400, "Automotive machinery & transit zone"),
+        MarketCoord("Obehie Central Market", "ukwa_west", "Ukwa West", 4.9650, 7.2780, "Oil-bearing corridor commercial nexus"),
+        MarketCoord("Akwete Weaving Center", "ukwa_east", "Ukwa East", 4.9820, 7.4200, "Traditional textile & riverine port park"),
+        MarketCoord("Okpuala Ngwa Central Park", "isiala_ngwa_north", "Isiala Ngwa North", 5.3900, 7.4100, "Historical administrative junction"),
+        MarketCoord("Omoba Railway Market", "isiala_ngwa_south", "Isiala Ngwa South", 5.2750, 7.3750, "Railway trade hub and agricultural transit"),
+        MarketCoord("Bende Town Park", "bende", "Bende", 5.5600, 7.6400, "Hilly agricultural produce depot"),
+        MarketCoord("Ebem Ohafia Park", "ohafia", "Ohafia", 5.6200, 7.8200, "Military barracks corridor & highland trade station"),
+        MarketCoord("Arochukwu Roundabout", "arochukwu", "Arochukwu", 5.3900, 7.9150, "Cross River border transit loop"),
+        MarketCoord("Otikpo Market", "isuikwuato", "Isuikwuato", 5.7150, 7.4900, "Railway transit & military school corridor"),
+        MarketCoord("Lokpanta Cattle Market", "umunneochi", "Umunneochi", 5.9200, 7.4200, "Northern border interstate trade gateway"),
+        MarketCoord("ABSU Uturu Gate 1 Park", "umunneochi", "Umunneochi", 5.8340, 7.4480, "Abia State University main campus keke rank"),
+        MarketCoord("MOUAU Umudike Main Gate Park", "ikwuano", "Ikwuano", 5.4700, 7.5600, "Michael Okpara University agriculture transit park")
+    )
+
+    fun resolveCoordinates(marketName: String, fallbackLgaId: String): Pair<Double, Double> {
+        val found = POPULAR_MARKET_COORDS.firstOrNull { it.marketName.equals(marketName, ignoreCase = true) }
+        if (found != null) {
+            return Pair(found.lat, found.lng)
+        }
+        val lga = getLgaById(fallbackLgaId)
+        if (lga != null) {
+            // Slight pseudo-offset based on string hash so same LGA points aren't stacked exactly on top of each other
+            val hashOffset = (marketName.hashCode() % 100) * 0.0003
+            return Pair(lga.centerLat + hashOffset, lga.centerLng + hashOffset)
+        }
+        return Pair(5.1118, 7.3689) // Default Aba South center
+    }
 }
+

@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.models.*
 import com.example.data.repository.KekeGoRepository
+import com.example.ui.components.GoogleTransitMapView
+import com.example.ui.components.PastTripsLogSheet
 import com.example.ui.components.SosFloatingTrigger
 import com.example.ui.theme.*
 import com.example.utils.LocationTracker
@@ -85,6 +87,7 @@ fun DriverScreen(
     // Counter offer input
     var counterTripTarget by remember { mutableStateOf<Trip?>(null) }
     var counterFareAmount by remember { mutableIntStateOf(600) }
+    var showPastTripsSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = AsphaltBlack,
@@ -125,6 +128,17 @@ fun DriverScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = AsphaltDark),
                 actions = {
+                    IconButton(
+                        onClick = { showPastTripsSheet = true },
+                        modifier = Modifier.testTag("driver_past_trips_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Past Trips Log",
+                            tint = SafetyAmber
+                        )
+                    }
+
                     SosFloatingTrigger(
                         onTriggerSos = {
                             coroutineScope.launch {
@@ -255,6 +269,19 @@ fun DriverScreen(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Live Google Maps SDK Corridor View for Drivers
+                        GoogleTransitMapView(
+                            originMarket = "Bata Junction",
+                            originLgaId = selectedLgaFilter,
+                            destinationMarket = "Ariaria International Market",
+                            destinationLgaId = "aba_north",
+                            userLiveLat = if (isDriverGpsLocked) driverLat else null,
+                            userLiveLng = if (isDriverGpsLocked) driverLng else null,
+                            modifier = Modifier.fillMaxWidth().height(220.dp)
+                        )
                     }
                 }
             }
@@ -599,6 +626,66 @@ fun DriverScreen(
                 }
             }
 
+            // Past Trips Log for Rider
+            item {
+                Surface(
+                    color = AsphaltCard,
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AsphaltDivider),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { showPastTripsSheet = true }
+                        .testTag("driver_past_trips_banner")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(SafetyAmber.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = SafetyAmber,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Rider Shift Trip History & Audit",
+                                    color = HighContrastWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = "${trips.count { it.status == TripStatus.COMPLETED }} completed rides synced from Firestore",
+                                    color = MutedSilver,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Open Log",
+                            tint = SafetyAmber,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
             item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
@@ -886,6 +973,13 @@ fun DriverScreen(
                     }
                 }
             }
+        )
+    }
+
+    if (showPastTripsSheet) {
+        PastTripsLogSheet(
+            repository = repository,
+            onDismissRequest = { showPastTripsSheet = false }
         )
     }
 }
