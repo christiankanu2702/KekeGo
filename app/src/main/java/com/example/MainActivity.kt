@@ -25,6 +25,7 @@ import com.example.data.models.UserRole
 import com.example.data.repository.KekeGoRepository
 import com.example.ui.screens.*
 import com.example.ui.theme.*
+import com.example.ui.components.AppUpdatePromptDialog
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 
@@ -33,11 +34,19 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        repository.checkForAppUpdates()
         enableEdgeToEdge()
 
         repository = KekeGoRepository(this, lifecycleScope)
 
         setContent {
+            val availableUpdate by repository.availableAppUpdate.collectAsState()
+            if (availableUpdate != null) {
+                AppUpdatePromptDialog(
+                    updateInfo = availableUpdate!!,
+                    onDismiss = { repository.dismissUpdatePrompt() }
+                )
+            }
             KekeGoTheme {
                 MainAppHost(repository = repository)
             }

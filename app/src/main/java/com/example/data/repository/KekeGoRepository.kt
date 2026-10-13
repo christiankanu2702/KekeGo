@@ -1312,6 +1312,53 @@ class KekeGoRepository(
     }
 
     // =====================================
+    // IN-APP AUTO-UPDATE TELEMETRY & PROMPT
+    // =====================================
+
+    private val _availableAppUpdate = MutableStateFlow<AppUpdateInfo?>(null)
+    val availableAppUpdate: StateFlow<AppUpdateInfo?> = _availableAppUpdate.asStateFlow()
+
+    fun checkForAppUpdates() {
+        val currentCode = com.example.BuildConfig.VERSION_CODE
+        scope.launch(Dispatchers.IO) {
+            try {
+                if (FirebaseManager.getCurrentUser() != null) {
+                    val doc = FirebaseManager.getFirestore(context)
+                        .collection("app_config")
+                        .document("release_version")
+                        .get()
+                        .await()
+
+                    if (doc.exists()) {
+                        val remoteCode = doc.getLong("latestVersionCode")?.toInt() ?: currentCode
+                        val remoteName = doc.getString("latestVersionName") ?: "1.0.0"
+                        val notes = doc.getString("releaseNotes") ?: "New commercial tricycle transit features & security updates."
+                        val url = doc.getString("downloadUrl") ?: "https://storage.googleapis.com/gen-lang-client-0639805966.appspot.com/builds/latest.apk"
+                        val mandatory = doc.getBoolean("isMandatory") ?: false
+
+                        if (remoteCode > currentCode) {
+                            _availableAppUpdate.value = AppUpdateInfo(
+                                latestVersionCode = remoteCode,
+                                latestVersionName = remoteName,
+                                releaseNotes = notes,
+                                downloadUrl = url,
+                                isMandatory = mandatory
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("KekeGoRepository", "Offline or check update skipped: ${e.message}")
+            }
+        }
+    }
+
+    fun dismissUpdatePrompt() {
+        _availableAppUpdate.value = null
+    }
+
+
+    // =====================================
     // BOLT REAL-TIME IN-APP TRIP CHAT
     // =====================================
 
