@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Colors } from '../theme/colors';
-import { BoltRideTier, RideTierOption } from '../types';
+import { KekeRideTier, RideTierOption } from '../types';
 
-interface BoltRideTierSelectorProps {
+interface KekeRideTierSelectorProps {
   baseFareNaira: number;
-  selectedTier: BoltRideTier;
-  onTierSelected: (tier: BoltRideTier) => void;
+  selectedTier: KekeRideTier;
+  onTierSelected: (tier: KekeRideTier) => void;
 }
 
 const TIERS: RideTierOption[] = [
@@ -15,7 +15,7 @@ const TIERS: RideTierOption[] = [
   { key: 'CARGO', title: 'Cargo & Freight', subtitle: 'Sacks & market cargo', multiplier: 1.5, capacitySeats: 1, etaMins: 4 },
 ];
 
-export const BoltRideTierSelector: React.FC<BoltRideTierSelectorProps> = ({
+export const KekeRideTierSelector: React.FC<KekeRideTierSelectorProps> = ({
   baseFareNaira,
   selectedTier,
   onTierSelected,

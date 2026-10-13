@@ -9,12 +9,12 @@ import {
   Alert,
 } from 'react-native';
 import { Colors } from '../theme/colors';
-import { UserAccount, Trip, BoltRideTier, TripChatMessage } from '../types';
-import { BoltRideMapView } from '../components/BoltRideMapView';
-import { BoltSavedPlacesRow } from '../components/BoltSavedPlacesRow';
-import { BoltRideTierSelector } from '../components/BoltRideTierSelector';
-import { BoltActiveTripCard } from '../components/BoltActiveTripCard';
-import { BoltChatModal } from '../components/BoltChatModal';
+import { UserAccount, Trip, KekeRideTier, TripChatMessage } from '../types';
+import { KekeRideMapView } from '../components/KekeRideMapView';
+import { KekeSavedPlacesRow } from '../components/KekeSavedPlacesRow';
+import { KekeRideTierSelector } from '../components/KekeRideTierSelector';
+import { KekeActiveTripCard } from '../components/KekeActiveTripCard';
+import { KekeChatModal } from '../components/KekeChatModal';
 import { FirestoreService } from '../firebase/firestoreService';
 
 interface PassengerScreenProps {
@@ -24,7 +24,7 @@ interface PassengerScreenProps {
 export const PassengerScreen: React.FC<PassengerScreenProps> = ({ user }) => {
   const [originMarket, setOriginMarket] = useState('Bata Junction Aba');
   const [destMarket, setDestMarket] = useState('Ariaria International Market');
-  const [selectedTier, setSelectedTier] = useState<BoltRideTier>('STANDARD');
+  const [selectedTier, setSelectedTier] = useState<KekeRideTier>('STANDARD');
   const [activeTrip, setActiveTrip] = useState<Trip | null>({
     id: 'TRIP_DEMO_IOS_01',
     passengerId: user.uid,
@@ -94,20 +94,20 @@ export const PassengerScreen: React.FC<PassengerScreenProps> = ({ user }) => {
 
       <ScrollView contentContainerStyle={styles.container}>
         {/* Saved Places Shortcuts */}
-        <BoltSavedPlacesRow
+        <KekeSavedPlacesRow
           onSelectPlace={(market) => {
             setDestMarket(market);
           }}
         />
 
         {/* 3D Isometric Cityscape Transit Radar */}
-        <BoltRideMapView
+        <KekeRideMapView
           originMarket={originMarket}
           destinationMarket={destMarket}
         />
 
         {/* Multi-Category Ride Tier Selector */}
-        <BoltRideTierSelector
+        <KekeRideTierSelector
           baseFareNaira={400}
           selectedTier={selectedTier}
           onTierSelected={setSelectedTier}
@@ -115,7 +115,7 @@ export const PassengerScreen: React.FC<PassengerScreenProps> = ({ user }) => {
 
         {/* Active Trip Status Card with Waiting Timer Countdown */}
         {activeTrip && (
-          <BoltActiveTripCard
+          <KekeActiveTripCard
             trip={activeTrip}
             onOpenChat={() => setChatVisible(true)}
             onCancelTrip={() => setActiveTrip(null)}
@@ -123,8 +123,8 @@ export const PassengerScreen: React.FC<PassengerScreenProps> = ({ user }) => {
         )}
       </ScrollView>
 
-      {/* Bolt In-App Chat Modal */}
-      <BoltChatModal
+      {/* Keke In-App Chat Modal */}
+      <KekeChatModal
         visible={chatVisible}
         onClose={() => setChatVisible(false)}
         messages={chatMessages}

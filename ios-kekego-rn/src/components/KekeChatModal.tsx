@@ -12,7 +12,7 @@ import {
 import { Colors } from '../theme/colors';
 import { TripChatMessage } from '../types';
 
-interface BoltChatModalProps {
+interface KekeChatModalProps {
   visible: boolean;
   onClose: () => void;
   driverName?: string;
@@ -30,7 +30,7 @@ const QUICK_CHIPS = [
   'Please wait 2 mins',
 ];
 
-export const BoltChatModal: React.FC<BoltChatModalProps> = ({
+export const KekeChatModal: React.FC<KekeChatModalProps> = ({
   visible,
   onClose,
   driverName = 'Kalu Driver',

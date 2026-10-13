@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Colors } from '../theme/colors';
 
-interface BoltSavedPlacesRowProps {
+interface KekeSavedPlacesRowProps {
   onSelectPlace: (marketName: string, lgaId: string) => void;
 }
 
@@ -14,7 +14,7 @@ const SHORTCUTS = [
   { label: 'Umuahia Terminal', marketName: 'Isi Gate Central Market', lgaId: 'umuahia_north', icon: '🚌' },
 ];
 
-export const BoltSavedPlacesRow: React.FC<BoltSavedPlacesRowProps> = ({ onSelectPlace }) => {
+export const KekeSavedPlacesRow: React.FC<KekeSavedPlacesRowProps> = ({ onSelectPlace }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.headerLabel}>SAVED PLACES SHORTCUTS</Text>

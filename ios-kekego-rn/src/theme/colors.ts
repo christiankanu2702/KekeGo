@@ -8,7 +8,7 @@ export const Colors = {
   emeraldGreen: '#00C853',
   emeraldGreenLight: '#69F0AE',
   emeraldGreenDark: '#005020',
-  boltGreen: '#00D664',
+  kekeGreen: '#00D664',
 
   // Surfaces & Dark Palette
   asphaltBlack: '#0D0D0D',

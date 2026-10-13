@@ -34,10 +34,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        repository.checkForAppUpdates()
         enableEdgeToEdge()
 
         repository = KekeGoRepository(this, lifecycleScope)
+        repository.checkForAppUpdates()
 
         setContent {
             val availableUpdate by repository.availableAppUpdate.collectAsState()

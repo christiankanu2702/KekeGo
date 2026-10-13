@@ -7,13 +7,36 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#0D0D0D"
+      "backgroundColor": "#0D0D0D",
+      "resizeMode": "contain"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.aistudio.kekego.ios",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "KekeGo requires location access to match you with nearby tricycle riders across Abia State corridors."
+        "NSLocationWhenInUseUsageDescription": "KekeGo requires your location to connect you with commercial tricycles along Abia State corridors.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "KekeGo uses your location during active transit rides for real-time safety telemetry and arrival estimations.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": ""
       }
     }
   }

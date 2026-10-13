@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import Svg, { Rect, Line, Circle, Path, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { Colors } from '../theme/colors';
 
-interface BoltRideMapViewProps {
+interface KekeRideMapViewProps {
   originMarket: string;
   destinationMarket: string;
 }
 
-export const BoltRideMapView: React.FC<BoltRideMapViewProps> = ({
+export const KekeRideMapView: React.FC<KekeRideMapViewProps> = ({
   originMarket,
   destinationMarket,
 }) => {
@@ -72,7 +72,7 @@ export const BoltRideMapView: React.FC<BoltRideMapViewProps> = ({
           fill="none"
         />
 
-        {/* 6. Bolt Glowing Emerald Transit Corridor */}
+        {/* 6. Keke Glowing Emerald Transit Corridor */}
         {/* Glow halo */}
         <Path
           d={`M ${pOrigin.x} ${pOrigin.y} Q ${pIntermediate.x} ${pIntermediate.y} ${pDest.x} ${pDest.y}`}
@@ -90,7 +90,7 @@ export const BoltRideMapView: React.FC<BoltRideMapViewProps> = ({
           fill="none"
           strokeLinecap="round"
         />
-        {/* Bolt Core Line */}
+        {/* Keke Core Line */}
         <Path
           d={`M ${pOrigin.x} ${pOrigin.y} Q ${pIntermediate.x} ${pIntermediate.y} ${pDest.x} ${pDest.y}`}
           stroke="#00D664"
@@ -109,7 +109,7 @@ export const BoltRideMapView: React.FC<BoltRideMapViewProps> = ({
           fillOpacity="0.32"
         />
 
-        {/* 8. Pickup Marker (Bolt Signature Green) */}
+        {/* 8. Pickup Marker (Keke Signature Green) */}
         <Circle cx={pOrigin.x} cy={pOrigin.y} r="22" fill="#00E676" fillOpacity="0.25" />
         <Circle cx={pOrigin.x} cy={pOrigin.y} r="9" fill="#FFFFFF" />
         <Circle cx={pOrigin.x} cy={pOrigin.y} r="6.5" fill="#00D664" />

@@ -3,13 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Linking, Share } from 'react-
 import { Colors } from '../theme/colors';
 import { Trip } from '../types';
 
-interface BoltActiveTripCardProps {
+interface KekeActiveTripCardProps {
   trip: Trip;
   onOpenChat: () => void;
   onCancelTrip: () => void;
 }
 
-export const BoltActiveTripCard: React.FC<BoltActiveTripCardProps> = ({
+export const KekeActiveTripCard: React.FC<KekeActiveTripCardProps> = ({
   trip,
   onOpenChat,
   onCancelTrip,

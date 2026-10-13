@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Colors } from '../theme/colors';
 import { UserAccount } from '../types';
-import { BoltRideMapView } from '../components/BoltRideMapView';
+import { KekeRideMapView } from '../components/KekeRideMapView';
 
 interface DriverScreenProps {
   user: UserAccount;
@@ -49,7 +49,7 @@ export const DriverScreen: React.FC<DriverScreenProps> = ({ user }) => {
         </View>
 
         {/* Live Transit Map */}
-        <BoltRideMapView
+        <KekeRideMapView
           originMarket="Bata Junction Aba"
           destinationMarket="Ariaria International Market"
         />

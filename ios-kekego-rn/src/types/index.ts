@@ -61,10 +61,10 @@ export interface TripChatMessage {
   timestampEpoch: number;
 }
 
-export type BoltRideTier = 'STANDARD' | 'CHARTER' | 'CARGO';
+export type KekeRideTier = 'STANDARD' | 'CHARTER' | 'CARGO';
 
 export interface RideTierOption {
-  key: BoltRideTier;
+  key: KekeRideTier;
   title: string;
   subtitle: string;
   multiplier: number;
