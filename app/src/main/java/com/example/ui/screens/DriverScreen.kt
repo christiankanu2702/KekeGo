@@ -18,12 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.models.*
 import com.example.data.repository.KekeGoRepository
-import com.example.ui.components.GoogleTransitMapView
+import com.example.ui.components.BoltRideMapView
 import com.example.ui.components.PastTripsLogSheet
 import com.example.ui.components.SosFloatingTrigger
 import com.example.ui.theme.*
@@ -273,7 +275,7 @@ fun DriverScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Live Google Maps SDK Corridor View for Drivers
-                        GoogleTransitMapView(
+                        BoltRideMapView(
                             originMarket = "Bata Junction",
                             originLgaId = selectedLgaFilter,
                             destinationMarket = "Ariaria International Market",

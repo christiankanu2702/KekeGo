@@ -16,8 +16,11 @@ android {
     applicationId = "com.aistudio.kekego.trptxa"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    val buildNumber = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1
+    val verName = System.getenv("APP_VERSION_NAME") ?: "1.0.0"
+
+    versionCode = buildNumber
+    versionName = verName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     manifestPlaceholders["MAPS_API_KEY"] = "AIzaSy_MOCK_MAPS_KEY_FOR_LOCAL_DEV"

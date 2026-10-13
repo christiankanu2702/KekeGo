@@ -13,6 +13,25 @@ enum class DriverServiceFilter {
     BOTH
 }
 
+data class DriverProfileData(
+    val stateRiderPermitId: String = "AB/KKE/2026/8941",
+    val tricyclePlateNo: String = "ABA-882-KU",
+    val unionBranchCode: String = "ATRWAN-ABA-ZONE-2",
+    val chassisNumber: String = "BAJAJ-RE-4S-782103",
+    val driverServiceFilter: DriverServiceFilter = DriverServiceFilter.BOTH,
+    val isComplianceVerified: Boolean = true
+)
+
+data class CaptainProfileData(
+    val managedParkName: String = "Bata Central Terminal Aba",
+    val assignedLgaId: String = "aba_south"
+)
+
+data class AdminProfileData(
+    val accessLevel: String = "SUPER_ADMIN",
+    val department: String = "ABIA_TRANSIT_OPS"
+)
+
 data class UserAccount(
     val uid: String = "",
     val email: String = "",

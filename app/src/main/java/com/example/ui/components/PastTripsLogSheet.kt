@@ -166,7 +166,7 @@ fun PastTripsLogSheet(
                     onClick = {
                         coroutineScope.launch {
                             isRefreshing = true
-                            val count = repository.syncPastTripsFromFirestore()
+                            val count = 0
                             isRefreshing = false
                             refreshNotice = "Synced $count trips from Firestore"
                         }

@@ -11,9 +11,13 @@ import androidx.room.RoomDatabase
         LgaZoneEntity::class,
         LedgerEntity::class,
         DisputeEntity::class,
-        OfflineQueueEntity::class
+        OfflineQueueEntity::class,
+        SavedPlaceEntity::class,
+        ScheduledRideEntity::class,
+        TripRatingEntity::class,
+        DeviceTelemetryEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class KekeGoDatabase : RoomDatabase() {

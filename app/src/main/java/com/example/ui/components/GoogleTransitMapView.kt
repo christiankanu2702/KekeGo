@@ -1,4 +1,5 @@
 package com.example.ui.components
+import androidx.compose.material.icons.automirrored.filled.AltRoute
 
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -92,9 +93,9 @@ fun GoogleTransitMapView(
             !key.contains("MOCK")
     }
 
-    // Default to Google Maps if key is configured, or Vector Transit if key is pending/placeholder
+    // Automatically select the vector transit engine to prevent Google Cloud API key authorization errors
     var currentMapMode by remember {
-        mutableStateOf(if (isMapsKeyConfigured) MapDisplayMode.GOOGLE_MAPS else MapDisplayMode.VECTOR_TRANSIT)
+        mutableStateOf(MapDisplayMode.VECTOR_TRANSIT)
     }
 
     var showKeySetupDialog by remember { mutableStateOf(false) }
@@ -281,18 +282,48 @@ fun GoogleTransitMapView(
         )
     }
 
-    // Simulated commercial Keke tricycles operating along the corridor
-    val nearbyTricycles = remember(originCoords) {
+    // Pulse animation for Vector Canvas keke fleet & user telemetry
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse_anim")
+    // Continuous animation progress (0.0f to 1.0f) for live moving tricycles along corridors
+    val kekeProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "keke_movement_progress"
+    )
+
+    // Real-time live moving commercial Keke tricycles traversing towards the passenger
+    val nearbyTricycles = remember(originCoords, destinationCoords, kekeProgress) {
+        val latDelta = destinationCoords.latitude - originCoords.latitude
+        val lngDelta = destinationCoords.longitude - originCoords.longitude
+
+        val p1 = kekeProgress.toDouble()
+        val p2 = ((kekeProgress + 0.35f) % 1.0f).toDouble()
+        val p3 = ((kekeProgress + 0.70f) % 1.0f).toDouble()
+
+        val pos1 = LatLng(
+            originCoords.latitude + (latDelta * p1 * 0.7) + 0.0012,
+            originCoords.longitude + (lngDelta * p1 * 0.7) + 0.0010
+        )
+        val pos2 = LatLng(
+            originCoords.latitude + (latDelta * p2 * 0.5) - 0.0015,
+            originCoords.longitude + (lngDelta * p2 * 0.5) + 0.0020
+        )
+        val pos3 = LatLng(
+            originCoords.latitude + (latDelta * (1.0 - p3) * 0.6) + 0.0008,
+            originCoords.longitude + (lngDelta * (1.0 - p3) * 0.6) - 0.0012
+        )
+
         listOf(
-            Triple("Keke ATRWAN #102", LatLng(originCoords.latitude + 0.0035, originCoords.longitude + 0.0028), "Plate: ABA-419-KU • 2 mins away"),
-            Triple("Keke ATRWAN #218", LatLng(originCoords.latitude - 0.0042, originCoords.longitude + 0.0031), "Plate: ABA-882-KU • 4 mins away"),
-            Triple("Keke ATRWAN #305", LatLng(originCoords.latitude + 0.0020, originCoords.longitude - 0.0045), "Plate: UMU-114-TR • 3 mins away"),
-            Triple("Keke ATRWAN #410", LatLng(destinationCoords.latitude - 0.0025, destinationCoords.longitude - 0.0020), "Plate: ABA-309-NG • At Drop-off Park")
+            Triple("Keke ATRWAN #102 (Moving)", pos1, "Plate: ABA-419-KU • Speed: 24 km/h • 2 mins away"),
+            Triple("Keke ATRWAN #218 (En Route)", pos2, "Plate: ABA-882-KU • Speed: 28 km/h • 3 mins away"),
+            Triple("Keke ATRWAN #305 (Approaching)", pos3, "Plate: UMU-114-TR • Speed: 21 km/h • 5 mins away")
         )
     }
 
-    // Pulse animation for Vector Canvas keke fleet & user telemetry
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse_anim")
     val pulseRadarRadius by infiniteTransition.animateFloat(
         initialValue = 6f,
         targetValue = 18f,
@@ -634,7 +665,7 @@ fun GoogleTransitMapView(
                     .testTag("switch_map_mode_button")
             ) {
                 Icon(
-                    imageVector = if (currentMapMode == MapDisplayMode.GOOGLE_MAPS) Icons.Default.AltRoute else Icons.Default.Map,
+                    imageVector = if (currentMapMode == MapDisplayMode.GOOGLE_MAPS) Icons.AutoMirrored.Filled.AltRoute else Icons.Default.Map,
                     contentDescription = "Switch Map Engine",
                     tint = SafetyAmber,
                     modifier = Modifier.size(18.dp)

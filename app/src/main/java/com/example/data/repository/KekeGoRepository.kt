@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -114,13 +115,18 @@ class KekeGoRepository(
                 val docRef = db.collection("users").document(uid)
                 val snapshot = docRef.get().await()
 
+                val isOwnerSuperAdmin = email.equals("christiankanu2702@gmail.com", ignoreCase = true)
+                val effectiveRole = if (isOwnerSuperAdmin) UserRole.ADMIN else role
+
                 val account = if (snapshot.exists()) {
+                    val dbRoleStr = snapshot.getString("role")
+                    val assignedRole = if (isOwnerSuperAdmin) UserRole.ADMIN else (dbRoleStr?.let { UserRole.valueOf(it) } ?: effectiveRole)
                     UserAccount(
                         uid = uid,
                         email = snapshot.getString("email") ?: email,
-                        displayName = snapshot.getString("displayName") ?: name,
+                        displayName = snapshot.getString("displayName") ?: (if (isOwnerSuperAdmin) "Christian Kanu (Super Admin)" else name),
                         phoneNumber = snapshot.getString("phoneNumber") ?: "08031234567",
-                        role = snapshot.getString("role")?.let { UserRole.valueOf(it) } ?: role,
+                        role = assignedRole,
                         homeLgaId = snapshot.getString("homeLgaId") ?: "aba_south",
                         walletBalanceNaira = snapshot.getLong("walletBalanceNaira")?.toInt() ?: 3500,
                         vaultSavingsNaira = snapshot.getLong("vaultSavingsNaira")?.toInt() ?: 450,
@@ -188,6 +194,49 @@ class KekeGoRepository(
                 "assignedLgaId" to account.assignedLgaId
             )
             db.collection("users").document(account.uid).set(data, SetOptions.merge()).await()
+
+            // Role Partition Synchronization
+            val roleCollectionName = when (account.role) {
+                UserRole.PASSENGER -> "passengers"
+                UserRole.DRIVER -> "drivers"
+                UserRole.PARK_CAPTAIN -> "park_captains"
+                UserRole.ADMIN -> "admins"
+            }
+            val roleSpecificData = when (account.role) {
+                UserRole.PASSENGER -> hashMapOf(
+                    "userId" to account.uid,
+                    "displayName" to account.displayName,
+                    "phoneNumber" to account.phoneNumber,
+                    "homeLgaId" to account.homeLgaId,
+                    "vaultSavingsNaira" to account.vaultSavingsNaira
+                )
+                UserRole.DRIVER -> hashMapOf(
+                    "userId" to account.uid,
+                    "displayName" to account.displayName,
+                    "phoneNumber" to account.phoneNumber,
+                    "stateRiderPermitId" to account.stateRiderPermitId,
+                    "unionBranchCode" to account.unionBranchCode,
+                    "chassisNumber" to account.chassisNumber,
+                    "tricyclePlateNo" to account.tricyclePlateNo,
+                    "isComplianceVerified" to account.isComplianceVerified,
+                    "driverServiceFilter" to account.driverServiceFilter.name
+                )
+                UserRole.PARK_CAPTAIN -> hashMapOf(
+                    "userId" to account.uid,
+                    "displayName" to account.displayName,
+                    "phoneNumber" to account.phoneNumber,
+                    "managedParkName" to account.managedParkName,
+                    "assignedLgaId" to account.assignedLgaId
+                )
+                UserRole.ADMIN -> hashMapOf(
+                    "userId" to account.uid,
+                    "displayName" to account.displayName,
+                    "email" to account.email,
+                    "accessLevel" to "SUPER_ADMIN",
+                    "department" to "ABIA_TRANSIT_OPS"
+                )
+            }
+            db.collection(roleCollectionName).document(account.uid).set(roleSpecificData, SetOptions.merge()).await()
         } catch (e: Exception) {
             handleFirestoreError(e, OperationType.WRITE, "users/${account.uid}")
         }
@@ -302,144 +351,6 @@ class KekeGoRepository(
     fun getCachedTripsFlow(): Flow<List<Trip>> {
         return dao.getAllCachedTripsFlow().map { entities ->
             entities.map { it.toDomainTrip() }
-        }
-    }
-
-    /**
-     * Explicitly pull past trips from Cloud Firestore collection `trips`.
-     * Persists results into local Room cache so the list view is instantly populated and works offline.
-     */
-    suspend fun syncPastTripsFromFirestore(): Int {
-        if (FirebaseManager.getCurrentUser() == null) {
-            // Seed sample past trips if offline/demo so user can immediately test the list view
-            val demoPastTrips = listOf(
-                Trip(
-                    id = "TRIP_ABA_0981",
-                    passengerId = requireUserId(),
-                    passengerName = _currentUserAccount.value?.displayName ?: "Christian Commuter",
-                    passengerPhone = "08031234567",
-                    driverId = "DRV_KALU_88",
-                    driverName = "Kalu Driver",
-                    driverPhone = "08029910022",
-                    tricycleRegNo = "ABA-882-KU",
-                    serviceMode = ServiceMode.PASSENGER,
-                    status = TripStatus.COMPLETED,
-                    originLgaId = "aba_south",
-                    originMarket = "Ahia Ohuru (New Market)",
-                    destinationLgaId = "aba_north",
-                    destinationMarket = "Ariaria International Market",
-                    intermediateStops = listOf("Milverton Avenue Junction"),
-                    proposedFareNaira = 650,
-                    finalAgreedFareNaira = 650,
-                    cargoSacks = 1,
-                    cargoBasins = 1,
-                    isPaidDigitally = true,
-                    paymentRef = "PSTK_TRIP_88912",
-                    createdAtEpoch = System.currentTimeMillis() - (3600000L * 5)
-                ),
-                Trip(
-                    id = "TRIP_ABA_0442",
-                    passengerId = requireUserId(),
-                    passengerName = _currentUserAccount.value?.displayName ?: "Christian Commuter",
-                    passengerPhone = "08031234567",
-                    driverId = "DRV_EMEKA_14",
-                    driverName = "Emeka Okoro",
-                    driverPhone = "08051123344",
-                    tricycleRegNo = "ABA-718-KU",
-                    serviceMode = ServiceMode.WAYBILL,
-                    status = TripStatus.COMPLETED,
-                    originLgaId = "aba_south",
-                    originMarket = "Bata Central Terminal",
-                    destinationLgaId = "osisioma",
-                    destinationMarket = "Osisioma Flyover Depot",
-                    intermediateStops = emptyList(),
-                    proposedFareNaira = 800,
-                    finalAgreedFareNaira = 800,
-                    cargoSacks = 3,
-                    cargoBasins = 0,
-                    waybillRecipientName = "Chinedu Spare Parts",
-                    waybillRecipientPhone = "08035544332",
-                    waybillOtp = "918234",
-                    isOtpVerified = true,
-                    isPaidDigitally = true,
-                    createdAtEpoch = System.currentTimeMillis() - (86400000L * 1)
-                ),
-                Trip(
-                    id = "TRIP_UMU_0119",
-                    passengerId = requireUserId(),
-                    passengerName = _currentUserAccount.value?.displayName ?: "Christian Commuter",
-                    passengerPhone = "08031234567",
-                    driverId = "DRV_SUNDAY_55",
-                    driverName = "Sunday Kalu",
-                    driverPhone = "08064433221",
-                    tricycleRegNo = "ABA-410-KU",
-                    serviceMode = ServiceMode.DAY_HIRE,
-                    status = TripStatus.COMPLETED,
-                    originLgaId = "umuahia_north",
-                    originMarket = "Ubani Ibeku Modern Market",
-                    destinationLgaId = "umuahia_south",
-                    destinationMarket = "Old Timber Market",
-                    intermediateStops = listOf("Isi Gate Commercial Hub"),
-                    proposedFareNaira = 2500,
-                    finalAgreedFareNaira = 2500,
-                    waitMinutes = 45,
-                    isWaitAndReturn = true,
-                    isPaidDigitally = false,
-                    createdAtEpoch = System.currentTimeMillis() - (86400000L * 3)
-                )
-            )
-            dao.insertTrips(demoPastTrips.map { it.toEntity(isSynced = true) })
-            return demoPastTrips.size
-        }
-
-        return try {
-            val db = FirebaseManager.getFirestore(context)
-            val snapshot = db.collection("trips").get().await()
-            val entities = snapshot.documents.mapNotNull { doc ->
-                try {
-                    TripEntity(
-                        id = doc.id,
-                        passengerId = doc.getString("passengerId") ?: "",
-                        passengerName = doc.getString("passengerName") ?: "Commuter",
-                        passengerPhone = doc.getString("passengerPhone") ?: "08012345678",
-                        driverId = doc.getString("driverId"),
-                        driverName = doc.getString("driverName"),
-                        driverPhone = doc.getString("driverPhone"),
-                        tricycleRegNo = doc.getString("tricycleRegNo"),
-                        serviceMode = doc.getString("serviceMode") ?: ServiceMode.PASSENGER.name,
-                        status = doc.getString("status") ?: TripStatus.REQUESTED.name,
-                        originLgaId = doc.getString("originLgaId") ?: "aba_south",
-                        originMarket = doc.getString("originMarket") ?: "Bata Junction",
-                        destinationLgaId = doc.getString("destinationLgaId") ?: "aba_north",
-                        destinationMarket = doc.getString("destinationMarket") ?: "Ariaria Market",
-                        intermediateStopsRaw = (doc.get("intermediateStops") as? List<*>)?.joinToString(",") ?: "",
-                        proposedFareNaira = doc.getLong("proposedFareNaira")?.toInt() ?: 500,
-                        finalAgreedFareNaira = doc.getLong("finalAgreedFareNaira")?.toInt() ?: 500,
-                        cargoSacks = doc.getLong("cargoSacks")?.toInt() ?: 0,
-                        cargoBasins = doc.getLong("cargoBasins")?.toInt() ?: 0,
-                        isWaitAndReturn = doc.getBoolean("isWaitAndReturn") ?: false,
-                        waitMinutes = doc.getLong("waitMinutes")?.toInt() ?: 0,
-                        waybillRecipientName = doc.getString("waybillRecipientName") ?: "",
-                        waybillRecipientPhone = doc.getString("waybillRecipientPhone") ?: "",
-                        waybillOtp = doc.getString("waybillOtp") ?: "",
-                        isOtpVerified = doc.getBoolean("isOtpVerified") ?: false,
-                        isPaidDigitally = doc.getBoolean("isPaidDigitally") ?: false,
-                        paymentRef = doc.getString("paymentRef"),
-                        createdAtEpoch = doc.getLong("createdAtEpoch") ?: System.currentTimeMillis(),
-                        isSyncedWithCloud = true
-                    )
-                } catch (e: Exception) {
-                    null
-                }
-            }
-            if (entities.isNotEmpty()) {
-                dao.insertTrips(entities)
-            }
-            entities.size
-        } catch (e: Exception) {
-            handleFirestoreError(e, OperationType.LIST, "trips")
-            Log.w(TAG, "syncPastTripsFromFirestore fallback: ${e.message}")
-            0
         }
     }
 
@@ -674,7 +585,7 @@ class KekeGoRepository(
         return true
     }
 
-    private suspend fun updateTripStatus(tripId: String, newStatus: TripStatus) {
+    suspend fun updateTripStatus(tripId: String, newStatus: TripStatus) {
         val cached = dao.getTripById(tripId)
         if (cached != null) {
             dao.insertOrUpdateTrip(cached.copy(status = newStatus.name))
@@ -983,8 +894,489 @@ class KekeGoRepository(
             }
         }
     }
-}
 
+    // ========================
+    // BOLT FEATURES METHODS
+    // ========================
+
+    fun getSavedPlacesFlow(): Flow<List<SavedPlace>> {
+        val uid = requireUserId()
+        return dao.getSavedPlacesFlow(uid).map { list ->
+            list.map {
+                SavedPlace(
+                    id = it.id,
+                    userId = it.userId,
+                    title = it.title,
+                    addressOrMarket = it.addressOrMarket,
+                    lgaId = it.lgaId,
+                    lat = it.lat,
+                    lng = it.lng,
+                    iconType = it.iconType
+                )
+            }
+        }
+    }
+
+    suspend fun addOrUpdateSavedPlace(
+        title: String,
+        addressOrMarket: String,
+        lgaId: String,
+        lat: Double = 5.1118,
+        lng: Double = 7.3689,
+        iconType: String = "CUSTOM"
+    ) {
+        val uid = requireUserId()
+        val id = "PLACE_" + System.currentTimeMillis()
+        val entity = SavedPlaceEntity(
+            id = id,
+            userId = uid,
+            title = title,
+            addressOrMarket = addressOrMarket,
+            lgaId = lgaId,
+            lat = lat,
+            lng = lng,
+            iconType = iconType
+        )
+        dao.insertSavedPlace(entity)
+    }
+
+    suspend fun deleteSavedPlace(id: String) {
+        val uid = requireUserId()
+        val entity = SavedPlaceEntity(
+            id = id,
+            userId = uid,
+            title = "",
+            addressOrMarket = "",
+            lgaId = "",
+            lat = 0.0,
+            lng = 0.0,
+            iconType = ""
+        )
+        dao.deleteSavedPlace(entity)
+    }
+
+    fun getScheduledRidesFlow(): Flow<List<ScheduledRide>> {
+        val uid = requireUserId()
+        return dao.getScheduledRidesFlow(uid).map { list ->
+            list.map {
+                ScheduledRide(
+                    id = it.id,
+                    userId = it.userId,
+                    originMarket = it.originMarket,
+                    originLgaId = it.originLgaId,
+                    destinationMarket = it.destinationMarket,
+                    destinationLgaId = it.destinationLgaId,
+                    pickupEpoch = it.pickupEpoch,
+                    isRecurring = it.isRecurring,
+                    recurringRule = it.recurringRule,
+                    serviceMode = try { ServiceMode.valueOf(it.serviceMode) } catch (_: Exception) { ServiceMode.PASSENGER },
+                    estimatedFareNaira = it.estimatedFareNaira,
+                    status = it.status
+                )
+            }
+        }
+    }
+
+    suspend fun scheduleRide(
+        originMarket: String,
+        originLgaId: String,
+        destinationMarket: String,
+        destinationLgaId: String,
+        pickupEpoch: Long,
+        isRecurring: Boolean,
+        recurringRule: String,
+        serviceMode: ServiceMode,
+        estimatedFareNaira: Int
+    ): String {
+        val uid = requireUserId()
+        val rideId = "SCHED_" + UUID.randomUUID().toString().take(8).uppercase()
+        val entity = ScheduledRideEntity(
+            id = rideId,
+            userId = uid,
+            originMarket = originMarket,
+            originLgaId = originLgaId,
+            destinationMarket = destinationMarket,
+            destinationLgaId = destinationLgaId,
+            pickupEpoch = pickupEpoch,
+            isRecurring = isRecurring,
+            recurringRule = recurringRule,
+            serviceMode = serviceMode.name,
+            estimatedFareNaira = estimatedFareNaira,
+            status = "SCHEDULED"
+        )
+        dao.insertScheduledRide(entity)
+        return rideId
+    }
+
+    suspend fun cancelScheduledRide(rideId: String) {
+        dao.updateScheduledRideStatus(rideId, "CANCELLED")
+    }
+
+    suspend fun submitTripRating(
+        tripId: String,
+        driverId: String?,
+        ratingStars: Int,
+        complimentTags: List<String>,
+        comment: String,
+        tipNaira: Int = 0
+    ) {
+        val uid = requireUserId()
+        val ratingId = "RATE_" + System.currentTimeMillis()
+        val entity = TripRatingEntity(
+            id = ratingId,
+            tripId = tripId,
+            passengerId = uid,
+            driverId = driverId,
+            ratingStars = ratingStars,
+            complimentTagsRaw = complimentTags.joinToString(","),
+            comment = comment,
+            tipNaira = tipNaira,
+            createdAtEpoch = System.currentTimeMillis()
+        )
+        dao.insertTripRating(entity)
+        if (tipNaira > 0) {
+            val currentAcc = currentUserAccount.value
+            if (currentAcc != null) {
+                val newBal = (currentAcc.walletBalanceNaira - tipNaira).coerceAtLeast(0)
+                _currentUserAccount.value = currentAcc.copy(walletBalanceNaira = newBal)
+                dao.insertLedgerEntry(
+                    LedgerEntity(
+                        id = "LEDGER_TIP_" + System.currentTimeMillis(),
+                        userId = uid,
+                        type = TransactionType.TRIP_PAYMENT.name,
+                        amountNaira = -tipNaira,
+                        referenceToken = "TIP_" + tripId,
+                        description = "Rider Tip for trip #" + tripId,
+                        timestampEpoch = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun getTripRatingForTrip(tripId: String): TripRating? {
+        val entity = dao.getTripRating(tripId) ?: return null
+        return TripRating(
+            id = entity.id,
+            tripId = entity.tripId,
+            passengerId = entity.passengerId,
+            driverId = entity.driverId,
+            ratingStars = entity.ratingStars,
+            complimentTags = if (entity.complimentTagsRaw.isBlank()) emptyList() else entity.complimentTagsRaw.split(","),
+            comment = entity.comment,
+            tipNaira = entity.tipNaira,
+            createdAtEpoch = entity.createdAtEpoch
+        )
+    }
+
+
+    // ============================================
+    // OWNER FLEET OPERATIONS & QUALITY GOVERNANCE
+    // ============================================
+
+    private val _fleetVehicles = MutableStateFlow<List<KekeFleetVehicle>>(
+        listOf(
+            KekeFleetVehicle(
+                driverId = "DRV_ABA_01",
+                driverName = "Kalu Driver",
+                driverPhone = "08039821033",
+                tricyclePlateNo = "ABA-882-KU",
+                lgaId = "aba_south",
+                currentMarketLocation = "Bata Junction Corridor",
+                lat = 5.1118,
+                lng = 7.3689,
+                speedKmh = 24,
+                isOnline = true,
+                currentTripStatus = "ON_TRIP",
+                ratingScore = 4.9,
+                totalTripsCompleted = 342,
+                isSuspended = false,
+                activeWarningCount = 0
+            ),
+            KekeFleetVehicle(
+                driverId = "DRV_ABA_02",
+                driverName = "Chinedu Okeke",
+                driverPhone = "08149811234",
+                tricyclePlateNo = "ABA-419-KU",
+                lgaId = "aba_north",
+                currentMarketLocation = "Ariaria Express Axis",
+                lat = 5.1320,
+                lng = 7.3480,
+                speedKmh = 18,
+                isOnline = true,
+                currentTripStatus = "EN_ROUTE_PICKUP",
+                ratingScore = 4.7,
+                totalTripsCompleted = 219,
+                isSuspended = false,
+                activeWarningCount = 1
+            ),
+            KekeFleetVehicle(
+                driverId = "DRV_UMU_03",
+                driverName = "Emeka Nwachukwu",
+                driverPhone = "07038192837",
+                tricyclePlateNo = "UMU-102-AB",
+                lgaId = "umuahia_north",
+                currentMarketLocation = "Isi-Gate Central Terminal",
+                lat = 5.5260,
+                lng = 7.4890,
+                speedKmh = 0,
+                isOnline = true,
+                currentTripStatus = "IDLE",
+                ratingScore = 4.8,
+                totalTripsCompleted = 412,
+                isSuspended = false,
+                activeWarningCount = 0
+            ),
+            KekeFleetVehicle(
+                driverId = "DRV_OSI_04",
+                driverName = "Ifeanyi Sunday",
+                driverPhone = "08029182374",
+                tricyclePlateNo = "OSI-901-KU",
+                lgaId = "osisioma",
+                currentMarketLocation = "Flyover Junction Corridor",
+                lat = 5.1500,
+                lng = 7.3300,
+                speedKmh = 32,
+                isOnline = true,
+                currentTripStatus = "ON_TRIP",
+                ratingScore = 3.9,
+                totalTripsCompleted = 98,
+                isSuspended = false,
+                activeWarningCount = 2
+            ),
+            KekeFleetVehicle(
+                driverId = "DRV_OBIN_05",
+                driverName = "Chima Nwosu",
+                driverPhone = "09038291039",
+                tricyclePlateNo = "OBN-331-KU",
+                lgaId = "obingwa",
+                currentMarketLocation = "Opobo Road Transit Hub",
+                lat = 5.0800,
+                lng = 7.4200,
+                speedKmh = 0,
+                isOnline = false,
+                currentTripStatus = "MAINTENANCE",
+                ratingScore = 4.6,
+                totalTripsCompleted = 180,
+                isSuspended = false,
+                activeWarningCount = 0
+            )
+        )
+    )
+    val fleetVehicles: StateFlow<List<KekeFleetVehicle>> = _fleetVehicles.asStateFlow()
+
+    private val _sosAlerts = MutableStateFlow<List<SosEmergencyAlert>>(
+        listOf(
+            SosEmergencyAlert(
+                id = "SOS_9812",
+                triggeredByUserId = "DRV_OSI_04",
+                senderName = "Ifeanyi Sunday (Tricycle OSI-901-KU)",
+                senderPhone = "08029182374",
+                role = "DRIVER",
+                locationLga = "Osisioma Flyover Corridor",
+                lat = 5.1500,
+                lng = 7.3300,
+                timestampEpoch = System.currentTimeMillis() - (12 * 60 * 1000),
+                status = "ACTIVE",
+                dispatchNote = "Driver signaled unauthorized roadblock near Flyover"
+            )
+        )
+    )
+    val sosAlerts: StateFlow<List<SosEmergencyAlert>> = _sosAlerts.asStateFlow()
+
+    private val _disputeTickets = MutableStateFlow<List<DisputeTicket>>(
+        listOf(
+            DisputeTicket(
+                id = "DSP_4401",
+                tripId = "TRIP_DEMO_01",
+                passengerId = "DEMO_PAX_1",
+                passengerName = "Ngozi Trader",
+                driverId = "DRV_ABA_02",
+                driverName = "Chinedu Okeke",
+                category = "OVERCHARGING",
+                description = "Driver requested additional ₦300 cash after trip completion despite agreement.",
+                amountInDisputeNaira = 300,
+                status = "OPEN",
+                createdAtEpoch = System.currentTimeMillis() - (45 * 60 * 1000)
+            ),
+            DisputeTicket(
+                id = "DSP_4402",
+                tripId = "TRIP_WAYBILL_99",
+                passengerId = "DEMO_PAX_2",
+                passengerName = "Amaka Clothier",
+                driverId = "DRV_OSI_04",
+                driverName = "Ifeanyi Sunday",
+                category = "WAYBILL_LOST",
+                description = "Delayed Waybill delivery for 2 sacks of fabrics from Ariaria to Bata.",
+                amountInDisputeNaira = 1200,
+                status = "OPEN",
+                createdAtEpoch = System.currentTimeMillis() - (90 * 60 * 1000)
+            )
+        )
+    )
+    val disputeTickets: StateFlow<List<DisputeTicket>> = _disputeTickets.asStateFlow()
+
+    fun toggleDriverSuspension(driverId: String) {
+        val updated = _fleetVehicles.value.map { v ->
+            if (v.driverId == driverId) v.copy(isSuspended = !v.isSuspended) else v
+        }
+        _fleetVehicles.value = updated
+    }
+
+    fun issueDriverWarning(driverId: String) {
+        val updated = _fleetVehicles.value.map { v ->
+            if (v.driverId == driverId) v.copy(activeWarningCount = v.activeWarningCount + 1) else v
+        }
+        _fleetVehicles.value = updated
+    }
+
+    fun resolveSosAlert(alertId: String, resolutionNote: String) {
+        val updated = _sosAlerts.value.map { a ->
+            if (a.id == alertId) a.copy(status = "RESOLVED", dispatchNote = resolutionNote) else a
+        }
+        _sosAlerts.value = updated
+    }
+
+    fun dispatchEmergencyUnits(alertId: String) {
+        val updated = _sosAlerts.value.map { a ->
+            if (a.id == alertId) a.copy(status = "DISPATCHED", dispatchNote = "Police & ATRWAN Patrol dispatched") else a
+        }
+        _sosAlerts.value = updated
+    }
+
+    suspend fun resolveDisputeWithRefund(ticketId: String) {
+        val ticket = _disputeTickets.value.find { it.id == ticketId } ?: return
+        val updated = _disputeTickets.value.map { t ->
+            if (t.id == ticketId) t.copy(status = "REFUNDED") else t
+        }
+        _disputeTickets.value = updated
+
+        // Credit refund to user's wallet
+        val currentAcc = _currentUserAccount.value
+        if (currentAcc != null) {
+            val newBal = currentAcc.walletBalanceNaira + ticket.amountInDisputeNaira
+            _currentUserAccount.value = currentAcc.copy(walletBalanceNaira = newBal)
+            dao.insertLedgerEntry(
+                LedgerEntity(
+                    id = "REFUND_" + System.currentTimeMillis(),
+                    userId = currentAcc.uid,
+                    type = TransactionType.WALLET_TOPUP.name,
+                    amountNaira = ticket.amountInDisputeNaira,
+                    referenceToken = "REFUND_" + ticketId,
+                    description = "Customer Support Dispute Refund for #" + ticket.tripId,
+                    timestampEpoch = System.currentTimeMillis()
+                )
+            )
+        }
+    }
+
+    fun dismissDispute(ticketId: String) {
+        val updated = _disputeTickets.value.map { t ->
+            if (t.id == ticketId) t.copy(status = "DISMISSED") else t
+        }
+        _disputeTickets.value = updated
+    }
+
+    // ===================================
+    // DEVICE TELEMETRY & FRAUD PREVENTION
+    // ===================================
+
+    fun getDeviceTelemetryLogsFlow(): Flow<List<DeviceTelemetryEntity>> {
+        return dao.getAllTelemetryLogsFlow()
+    }
+
+    suspend fun recordDeviceAudit(
+        userRole: String,
+        eventId: String,
+        isMockLocation: Boolean = false
+    ) {
+        val uid = requireUserId()
+        val info = com.example.utils.DeviceTelemetryTracker.captureCurrentTelemetry(context, isMockLocation)
+        val entity = DeviceTelemetryEntity(
+            id = "TEL_" + System.currentTimeMillis(),
+            userId = uid,
+            userRole = userRole,
+            deviceHardwareId = info.deviceHardwareId,
+            androidId = info.androidId,
+            phoneModel = info.manufacturer + " " + info.model,
+            osVersion = info.osVersion,
+            batteryPercent = info.batteryPercent,
+            isCharging = info.isCharging,
+            networkType = info.networkType,
+            isMockLocation = info.isMockLocationSpoofed,
+            screenResolution = info.screenResolution,
+            associatedTripOrEventId = eventId,
+            capturedAtEpoch = System.currentTimeMillis()
+        )
+        dao.insertTelemetryLog(entity)
+    }
+
+    // =====================================
+    // BOLT REAL-TIME IN-APP TRIP CHAT
+    // =====================================
+
+    private val _tripChatMessages = MutableStateFlow<Map<String, List<TripChatMessage>>>(
+        mapOf(
+            "TRIP_DEMO_01" to listOf(
+                TripChatMessage(
+                    id = "MSG_01",
+                    tripId = "TRIP_DEMO_01",
+                    senderId = "DRV_ABA_01",
+                    senderName = "Kalu Driver",
+                    senderRole = UserRole.DRIVER,
+                    messageText = "Good day! I am arriving Bata Junction in 2 minutes.",
+                    timestampEpoch = System.currentTimeMillis() - 180000
+                ),
+                TripChatMessage(
+                    id = "MSG_02",
+                    tripId = "TRIP_DEMO_01",
+                    senderId = "PASSENGER_USER",
+                    senderName = "Commuter",
+                    senderRole = UserRole.PASSENGER,
+                    messageText = "Okay, I am standing near the traffic light with 1 sack.",
+                    timestampEpoch = System.currentTimeMillis() - 120000
+                )
+            )
+        )
+    )
+    val tripChatMessages: StateFlow<Map<String, List<TripChatMessage>>> = _tripChatMessages.asStateFlow()
+
+    fun getMessagesForTrip(tripId: String): List<TripChatMessage> {
+        return _tripChatMessages.value[tripId] ?: emptyList()
+    }
+
+    suspend fun sendTripChatMessage(
+        tripId: String,
+        messageText: String
+    ) {
+        val user = _currentUserAccount.value ?: return
+        val newMsg = TripChatMessage(
+            id = "MSG_" + System.currentTimeMillis(),
+            tripId = tripId,
+            senderId = user.uid,
+            senderName = if (user.displayName.isNotBlank()) user.displayName else "User",
+            senderRole = user.role,
+            messageText = messageText,
+            timestampEpoch = System.currentTimeMillis()
+        )
+        val currentList = _tripChatMessages.value[tripId] ?: emptyList()
+        val updatedMap = _tripChatMessages.value.toMutableMap()
+        updatedMap[tripId] = currentList + newMsg
+        _tripChatMessages.value = updatedMap
+
+        try {
+            if (FirebaseManager.getCurrentUser() != null) {
+                FirebaseManager.getFirestore(context)
+                    .collection("trips")
+                    .document(tripId)
+                    .collection("messages")
+                    .document(newMsg.id)
+                    .set(newMsg)
+            }
+        } catch (_: Exception) {}
+    }
+
+}
 // Entity mappings
 fun TripEntity.toDomainTrip(): Trip {
     return Trip(
@@ -1051,4 +1443,5 @@ fun Trip.toEntity(isSynced: Boolean): TripEntity {
         createdAtEpoch = this.createdAtEpoch,
         isSyncedWithCloud = isSynced
     )
+
 }

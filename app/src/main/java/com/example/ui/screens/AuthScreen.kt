@@ -2,9 +2,12 @@ package com.example.ui.screens
 
 import android.app.Activity
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +28,8 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import com.example.R
 import com.example.data.firebase.FirebaseManager
+import com.example.data.models.AbiaCorridorData
+import com.example.data.models.DriverServiceFilter
 import com.example.data.models.UserRole
 import com.example.ui.theme.*
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
@@ -32,6 +38,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     onSignInSuccess: (UserRole) -> Unit,
@@ -44,42 +51,57 @@ fun AuthScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedRole by remember { mutableStateOf(UserRole.PASSENGER) }
 
+    // Role-Specific Compliance Registration Fields
+    var fullName by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var homeLgaId by remember { mutableStateOf("aba_south") }
+
+    // Driver Specific
+    var riderPermitId by remember { mutableStateOf("AB/KKE/2026/8941") }
+    var tricyclePlateNo by remember { mutableStateOf("ABA-882-KU") }
+    var unionBranchCode by remember { mutableStateOf("ATRWAN Zone 2 (Aba Central)") }
+    var chassisNumber by remember { mutableStateOf("BAJAJ-RE-4S-782103") }
+    var driverFilter by remember { mutableStateOf(DriverServiceFilter.BOTH) }
+
+    // Park Captain Specific
+    var managedParkName by remember { mutableStateOf("Bata Central Terminal Aba") }
+    var assignedLgaId by remember { mutableStateOf("aba_south") }
+
+    // Admin Specific
+    var adminDepartment by remember { mutableStateOf("Abia State Ministry of Transport Operations") }
+
     Surface(
         modifier = modifier.fillMaxSize(),
         color = AsphaltBlack
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // High-Performance Transit Hero Badge (Zero bitmap decoding overhead)
+            item {
+                Spacer(modifier = Modifier.height(10.dp))
+                // Brand Header Badge
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(160.dp),
-                    shape = RoundedCornerShape(20.dp),
+                        .height(140.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = AsphaltSurface),
                     border = androidx.compose.foundation.BorderStroke(1.5.dp, SafetyAmber.copy(alpha = 0.6f))
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp),
+                            .padding(14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(64.dp)
+                                .size(52.dp)
                                 .clip(CircleShape)
                                 .background(SafetyAmber),
                             contentAlignment = Alignment.Center
@@ -88,12 +110,10 @@ fun AuthScreen(
                                 imageVector = Icons.Default.ElectricRickshaw,
                                 contentDescription = "Keke Napep",
                                 tint = AsphaltDark,
-                                modifier = Modifier.size(38.dp)
+                                modifier = Modifier.size(32.dp)
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
+                        Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 color = EmeraldGreenDark,
@@ -102,59 +122,52 @@ fun AuthScreen(
                                 Text(
                                     text = "17 LGAs CERTIFIED",
                                     color = HighContrastWhite,
-                                    fontSize = 10.sp,
+                                    fontSize = 9.sp,
                                     fontWeight = FontWeight.Black,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "ATRWAN & TOAN COMPLIANT",
                                 color = SafetyAmber,
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(18.dp))
+            item {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "KekeGo Registration",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = SafetyAmber,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "Abia State Tricycle Transit & Cargo Authority",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MutedSilver
+                    )
+                }
+            }
 
+            // Select Role Tab Row
+            item {
                 Text(
-                    text = "KekeGo",
-                    style = MaterialTheme.typography.headlineLarge,
+                    text = "SELECT OPERATING ROLE AT REGISTRATION:",
+                    style = MaterialTheme.typography.labelSmall,
                     color = SafetyAmber,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                Text(
-                    text = "Statewide Commercial Tricycle Logistics",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = HighContrastWhite,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Text(
-                    text = "Connecting Aba, Umuahia, and all 17 LGAs of Abia State",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedSilver
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = "Select Transit Operating Mode:",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = HighContrastWhite,
-                    modifier = Modifier.align(Alignment.Start)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Role selection chips
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     listOf(
                         UserRole.PASSENGER to "Passenger",
@@ -178,20 +191,213 @@ fun AuthScreen(
                 }
             }
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            // Role-Specific Profile & Compliance Registration Card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = AsphaltCard),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AsphaltDivider)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = when (selectedRole) {
+                                    UserRole.PASSENGER -> Icons.Default.Person
+                                    UserRole.DRIVER -> Icons.Default.DirectionsCar
+                                    UserRole.PARK_CAPTAIN -> Icons.Default.SupervisorAccount
+                                    UserRole.ADMIN -> Icons.Default.Analytics
+                                },
+                                contentDescription = null,
+                                tint = SafetyAmber,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = when (selectedRole) {
+                                    UserRole.PASSENGER -> "Passenger Details"
+                                    UserRole.DRIVER -> "State Rider License & Vehicle Compliance"
+                                    UserRole.PARK_CAPTAIN -> "Park Terminal & Union Assignment"
+                                    UserRole.ADMIN -> "State Transit Governance Credentials"
+                                },
+                                color = HighContrastWhite,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        // Common Contact Fields
+                        OutlinedTextField(
+                            value = fullName,
+                            onValueChange = { fullName = it },
+                            label = { Text("Full Name (or Commercial Alias)", fontSize = 11.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = HighContrastWhite,
+                                unfocusedTextColor = HighContrastWhite,
+                                focusedBorderColor = SafetyAmber,
+                                unfocusedBorderColor = AsphaltDivider
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = phoneNumber,
+                            onValueChange = { phoneNumber = it },
+                            label = { Text("Phone Number (e.g. 08031234567)", fontSize = 11.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = HighContrastWhite,
+                                unfocusedTextColor = HighContrastWhite,
+                                focusedBorderColor = SafetyAmber,
+                                unfocusedBorderColor = AsphaltDivider
+                            )
+                        )
+
+                        when (selectedRole) {
+                            UserRole.PASSENGER -> {
+                                Text("Primary Residence / Base LGA:", color = MutedSilver, fontSize = 11.sp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    listOf("aba_south" to "Aba South", "aba_north" to "Aba North", "umuahia_north" to "Umuahia").forEach { (id, label) ->
+                                        FilterChip(
+                                            selected = homeLgaId == id,
+                                            onClick = { homeLgaId = id },
+                                            label = { Text(label, fontSize = 10.sp) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = EmeraldGreen,
+                                                selectedLabelColor = AsphaltDark,
+                                                containerColor = AsphaltSurface,
+                                                labelColor = HighContrastWhite
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            UserRole.DRIVER -> {
+                                OutlinedTextField(
+                                    value = riderPermitId,
+                                    onValueChange = { riderPermitId = it },
+                                    label = { Text("Abia State Rider Permit ID", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = HighContrastWhite,
+                                        unfocusedTextColor = HighContrastWhite,
+                                        focusedBorderColor = SafetyAmber,
+                                        unfocusedBorderColor = AsphaltDivider
+                                    )
+                                )
+
+                                OutlinedTextField(
+                                    value = tricyclePlateNo,
+                                    onValueChange = { tricyclePlateNo = it },
+                                    label = { Text("Tricycle Plate No (e.g. ABA-882-KU)", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = HighContrastWhite,
+                                        unfocusedTextColor = HighContrastWhite,
+                                        focusedBorderColor = SafetyAmber,
+                                        unfocusedBorderColor = AsphaltDivider
+                                    )
+                                )
+
+                                OutlinedTextField(
+                                    value = unionBranchCode,
+                                    onValueChange = { unionBranchCode = it },
+                                    label = { Text("Union Branch (ATRWAN / TOAN Unit)", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = HighContrastWhite,
+                                        unfocusedTextColor = HighContrastWhite,
+                                        focusedBorderColor = SafetyAmber,
+                                        unfocusedBorderColor = AsphaltDivider
+                                    )
+                                )
+
+                                OutlinedTextField(
+                                    value = chassisNumber,
+                                    onValueChange = { chassisNumber = it },
+                                    label = { Text("Engine / Chassis VIN Number", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = HighContrastWhite,
+                                        unfocusedTextColor = HighContrastWhite,
+                                        focusedBorderColor = SafetyAmber,
+                                        unfocusedBorderColor = AsphaltDivider
+                                    )
+                                )
+                            }
+
+                            UserRole.PARK_CAPTAIN -> {
+                                OutlinedTextField(
+                                    value = managedParkName,
+                                    onValueChange = { managedParkName = it },
+                                    label = { Text("Assigned Transit Park / Terminal", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = HighContrastWhite,
+                                        unfocusedTextColor = HighContrastWhite,
+                                        focusedBorderColor = SafetyAmber,
+                                        unfocusedBorderColor = AsphaltDivider
+                                    )
+                                )
+
+                                Text("Terminal LGA Jurisdiction:", color = MutedSilver, fontSize = 11.sp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    listOf("aba_south" to "Aba South", "aba_north" to "Aba North", "osisioma" to "Osisioma").forEach { (id, label) ->
+                                        FilterChip(
+                                            selected = assignedLgaId == id,
+                                            onClick = { assignedLgaId = id },
+                                            label = { Text(label, fontSize = 10.sp) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = EmeraldGreen,
+                                                selectedLabelColor = AsphaltDark,
+                                                containerColor = AsphaltSurface,
+                                                labelColor = HighContrastWhite
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+
+                            UserRole.ADMIN -> {
+                                OutlinedTextField(
+                                    value = adminDepartment,
+                                    onValueChange = { adminDepartment = it },
+                                    label = { Text("State Governance Department", fontSize = 11.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = HighContrastWhite,
+                                        unfocusedTextColor = HighContrastWhite,
+                                        focusedBorderColor = SafetyAmber,
+                                        unfocusedBorderColor = AsphaltDivider
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Action Buttons
+            item {
                 if (errorMessage != null) {
                     Text(
                         text = errorMessage ?: "",
                         color = ErrorRed,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier.padding(bottom = 6.dp)
                     )
                 }
 
-                // Interactive Google Sign-In via Credential Manager
                 Button(
                     onClick = {
                         isLoading = true
@@ -200,10 +406,7 @@ fun AuthScreen(
                             try {
                                 val credentialManager = CredentialManager.create(context)
                                 val webClientId = context.getString(R.string.default_web_client_id)
-
-                                val googleIdOption = GetSignInWithGoogleOption.Builder(webClientId)
-                                    .build()
-
+                                val googleIdOption = GetSignInWithGoogleOption.Builder(webClientId).build()
                                 val request = GetCredentialRequest.Builder()
                                     .addCredentialOption(googleIdOption)
                                     .build()
@@ -212,99 +415,72 @@ fun AuthScreen(
                                     request = request,
                                     context = context as Activity
                                 )
-
                                 val credential = result.credential
                                 if (credential is GoogleIdTokenCredential) {
                                     val authCredential = GoogleAuthProvider.getCredential(credential.idToken, null)
-                                    FirebaseManager.getAuth().signInWithCredential(authCredential).await()
-                                    isLoading = false
-                                    onSignInSuccess(selectedRole)
+                                    val authResult = FirebaseManager.getAuth().signInWithCredential(authCredential).await()
+                                    val user = authResult.user
+                                    if (user != null) {
+                                        onSignInSuccess(selectedRole)
+                                    } else {
+                                        errorMessage = "Failed to obtain Firebase user"
+                                    }
                                 } else {
-                                    isLoading = false
-                                    errorMessage = "Unsupported credential format"
+                                    errorMessage = "Unexpected credential format"
                                 }
                             } catch (e: GetCredentialCancellationException) {
-                                Log.w("AuthScreen", "Sign-in cancelled by user")
-                                isLoading = false
+                                Log.i("AuthScreen", "User dismissed Google Sign-In")
                             } catch (e: Exception) {
-                                Log.e("AuthScreen", "Sign-in error: ${e.message}", e)
+                                Log.e("AuthScreen", "Authentication failed", e)
+                                errorMessage = "Google Sign-In failed: ${e.localizedMessage ?: "Unknown error"}"
+                            } finally {
                                 isLoading = false
-                                errorMessage = "Sign-in note: ${e.localizedMessage ?: "Please retry or use quick access"}"
                             }
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = SafetyAmber,
-                        contentColor = AsphaltDark
-                    ),
+                        .height(52.dp)
+                        .testTag("google_sign_in_button"),
+                    colors = ButtonDefaults.buttonColors(containerColor = SafetyAmber, contentColor = AsphaltDark),
                     shape = RoundedCornerShape(12.dp),
                     enabled = !isLoading
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = AsphaltDark,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Connecting...")
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = AsphaltDark)
                     } else {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(imageVector = Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Sign in with Google",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            text = "Register with Google Account",
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Fast Direct Explorer Entry for Browser Emulator Testing
                 OutlinedButton(
-                    onClick = {
-                        onDemoSignIn(selectedRole)
-                    },
+                    onClick = { onDemoSignIn(selectedRole) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = EmeraldGreenLight
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldGreen.copy(alpha = 0.6f)),
+                        .height(48.dp)
+                        .testTag("offline_demo_session_button"),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = HighContrastWhite),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AsphaltDivider),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Bolt,
-                        contentDescription = null,
-                        tint = EmeraldGreen,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null, tint = EmeraldGreen, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Instant Mode Entry (${selectedRole.name})",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
+                        text = "Instant Demo (${selectedRole.name.replace("_", " ")})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = "Abia Commercial Riders Permit & State Logistics Protocol",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedSilver,
-                    fontSize = 10.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }

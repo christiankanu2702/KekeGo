@@ -80,3 +80,66 @@ data class OfflineQueueEntity(
     val payloadJson: String,
     val createdAtEpoch: Long = System.currentTimeMillis()
 )
+
+// Bolt Core Additions: Saved Places
+@Entity(tableName = "saved_places")
+data class SavedPlaceEntity(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val title: String, // Home, Work, Ariaria, Ahia Ohuru, Custom
+    val addressOrMarket: String,
+    val lgaId: String,
+    val lat: Double,
+    val lng: Double,
+    val iconType: String // HOME, WORK, MARKET, CUSTOM
+)
+
+// Bolt Core Additions: Scheduled & Recurring Bookings
+@Entity(tableName = "scheduled_rides")
+data class ScheduledRideEntity(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val originMarket: String,
+    val originLgaId: String,
+    val destinationMarket: String,
+    val destinationLgaId: String,
+    val pickupEpoch: Long,
+    val isRecurring: Boolean,
+    val recurringRule: String, // DAILY, WEEKDAYS, WEEKLY
+    val serviceMode: String,
+    val estimatedFareNaira: Int,
+    val status: String = "ACTIVE" // ACTIVE, CANCELLED, DISPATCHED
+)
+
+// Bolt Core Additions: Trip Ratings & Review Tags
+@Entity(tableName = "trip_ratings")
+data class TripRatingEntity(
+    @PrimaryKey val id: String,
+    val tripId: String,
+    val passengerId: String,
+    val driverId: String?,
+    val ratingStars: Int, // 1 to 5
+    val complimentTagsRaw: String, // Comma separated: Clean Keke, Polite Driver, Safe Driving, etc.
+    val comment: String,
+    val tipNaira: Int = 0,
+    val createdAtEpoch: Long = System.currentTimeMillis()
+)
+
+// Bolt Core Additions: Device Telemetry & Audit Trail
+@Entity(tableName = "device_telemetry_logs")
+data class DeviceTelemetryEntity(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val userRole: String,
+    val deviceHardwareId: String,
+    val androidId: String,
+    val phoneModel: String,
+    val osVersion: String,
+    val batteryPercent: Int,
+    val isCharging: Boolean,
+    val networkType: String,
+    val isMockLocation: Boolean,
+    val screenResolution: String,
+    val associatedTripOrEventId: String,
+    val capturedAtEpoch: Long = System.currentTimeMillis()
+)

@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "KekeGo iOS",
+    "slug": "kekego-ios",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0D0D0D"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aistudio.kekego.ios",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "KekeGo requires location access to match you with nearby tricycle riders across Abia State corridors."
+      }
+    }
+  }
+}
