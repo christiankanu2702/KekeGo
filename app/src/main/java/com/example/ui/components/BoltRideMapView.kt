@@ -55,6 +55,9 @@ fun BoltRideMapView(
     intermediateStops: List<String> = emptyList(),
     userLiveLat: Double? = null,
     userLiveLng: Double? = null,
+    activeDriverLat: Double? = null,
+    activeDriverLng: Double? = null,
+    activeDriverPlate: String? = null,
     onMarketSelected: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -499,6 +502,67 @@ fun BoltRideMapView(
                 )
                 drawCircle(Color.White, radius = 5f * mapScale, center = pulsePt)
                 drawCircle(Color(0xFF00E676).copy(alpha = 0.6f), radius = 10f * mapScale, center = pulsePt)
+
+                // ----------------------------------------------------
+                // 4.5 REAL-TIME ASSIGNED TRICYCLE TELEMETRY (FIRESTORE)
+                // ----------------------------------------------------
+                if (activeDriverLat != null && activeDriverLng != null) {
+                    val pAssigned = project(LatLng(activeDriverLat, activeDriverLng))
+                    // Pulsing green radar wave for assigned keke
+                    drawCircle(Color(0xFF00E676).copy(alpha = 0.35f), radius = (radarPulse + 14f) * mapScale, center = pAssigned)
+                    drawCircle(Color.Black.copy(alpha = 0.65f), radius = 16f * mapScale, center = Offset(pAssigned.x, pAssigned.y + 4f * mapScale))
+
+                    // Front projected yellow headlights
+                    val beam = Path().apply {
+                        moveTo(pAssigned.x + 8f * mapScale, pAssigned.y - 2f * mapScale)
+                        lineTo(pAssigned.x + 30f * mapScale, pAssigned.y - 12f * mapScale)
+                        lineTo(pAssigned.x + 30f * mapScale, pAssigned.y + 10f * mapScale)
+                        close()
+                    }
+                    drawPath(beam, color = Color(0xFFFFEE58).copy(alpha = 0.40f))
+
+                    // Keke Body Chassis (Bright Safety Amber)
+                    drawRoundRect(
+                        color = SafetyAmber,
+                        topLeft = Offset(pAssigned.x - 12f * mapScale, pAssigned.y - 8f * mapScale),
+                        size = Size(24f * mapScale, 16f * mapScale),
+                        cornerRadius = CornerRadius(6f, 6f)
+                    )
+                    // Cabin Top
+                    drawRoundRect(
+                        color = Color(0xFF10141D),
+                        topLeft = Offset(pAssigned.x - 9f * mapScale, pAssigned.y - 6f * mapScale),
+                        size = Size(12f * mapScale, 12f * mapScale),
+                        cornerRadius = CornerRadius(3f, 3f)
+                    )
+
+                    // Floating Live Tracking Pill Badge
+                    val plate = activeDriverPlate ?: "ABA-882-KU"
+                    val badgeW = 95f * mapScale
+                    val badgeH = 22f * mapScale
+                    val badgePos = Offset(pAssigned.x - badgeW / 2f, pAssigned.y - 32f * mapScale)
+                    drawRoundRect(
+                        color = Color(0xFF0C1017).copy(alpha = 0.95f),
+                        topLeft = badgePos,
+                        size = Size(badgeW, badgeH),
+                        cornerRadius = CornerRadius(7f, 7f)
+                    )
+                    drawRoundRect(
+                        color = Color(0xFF00E676),
+                        topLeft = badgePos,
+                        size = Size(badgeW, badgeH),
+                        cornerRadius = CornerRadius(7f, 7f),
+                        style = Stroke(width = 1.4f)
+                    )
+                    val badgeLayout = textMeasurer.measure(
+                        text = "● $plate",
+                        style = TextStyle(color = Color(0xFF00E676), fontSize = (8.5f * mapScale).coerceIn(7.5f, 11f).sp, fontWeight = FontWeight.Black)
+                    )
+                    drawText(
+                        textLayoutResult = badgeLayout,
+                        topLeft = Offset(badgePos.x + 8f * mapScale, badgePos.y + 3f * mapScale)
+                    )
+                }
 
                 // ----------------------------------------------------
                 // 5. AUTHENTIC 3D COMMERCIAL KEKES WITH HEADLIGHTS

@@ -46,6 +46,9 @@ data class Trip(
     val scheduledTimeEpoch: Long? = null,
     val isPaidDigitally: Boolean = false,
     val paymentRef: String? = null,
+    val driverLiveLat: Double? = null,
+    val driverLiveLng: Double? = null,
+    val driverLiveHeading: Float? = null,
     val createdAtEpoch: Long = System.currentTimeMillis()
 )
 

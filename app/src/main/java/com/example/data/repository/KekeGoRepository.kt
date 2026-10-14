@@ -585,6 +585,25 @@ class KekeGoRepository(
         return true
     }
 
+    // Live Telemetry Synchronization for Active Tricycle Trips (Driver -> Firestore -> Passenger)
+    suspend fun updateDriverTripLocation(tripId: String, latitude: Double, longitude: Double, heading: Float = 0f) {
+        if (FirebaseManager.getCurrentUser() != null) {
+            try {
+                val db = FirebaseManager.getFirestore(context)
+                db.collection("trips").document(tripId).update(
+                    mapOf(
+                        "driverLiveLat" to latitude,
+                        "driverLiveLng" to longitude,
+                        "driverLiveHeading" to heading,
+                        "lastTelemetryEpoch" to System.currentTimeMillis()
+                    )
+                ).await()
+            } catch (e: Exception) {
+                Log.w(TAG, "Driver location update failed to sync with Firestore: ${e.message}")
+            }
+        }
+    }
+
     suspend fun updateTripStatus(tripId: String, newStatus: TripStatus) {
         val cached = dao.getTripById(tripId)
         if (cached != null) {

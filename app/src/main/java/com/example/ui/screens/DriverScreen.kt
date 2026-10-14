@@ -41,6 +41,7 @@ fun DriverScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
     val userAccount by repository.currentUserAccount.collectAsState()
     val trips by repository.getCachedTripsFlow().collectAsState(initial = emptyList())
 
@@ -48,6 +49,18 @@ fun DriverScreen(
     var driverLat by remember { mutableDoubleStateOf(5.1118) }
     var driverLng by remember { mutableDoubleStateOf(7.3689) }
     var isDriverGpsLocked by remember { mutableStateOf(false) }
+
+    // Real-Time GPS Telemetry Sync to Cloud Firestore for Active Commuter Tracking
+    LaunchedEffect(driverLat, driverLng, trips, isDriverGpsLocked) {
+        val currentTrip = trips.firstOrNull { it.status == TripStatus.ACCEPTED || it.status == TripStatus.IN_PROGRESS }
+        if (currentTrip != null && isDriverGpsLocked) {
+            repository.updateDriverTripLocation(
+                tripId = currentTrip.id,
+                latitude = driverLat,
+                longitude = driverLng
+            )
+        }
+    }
 
     val driverLocationLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -275,13 +288,17 @@ fun DriverScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         // Live Google Maps SDK Corridor View for Drivers
+                        val myActiveTrip = trips.firstOrNull { it.status == TripStatus.ACCEPTED || it.status == TripStatus.IN_PROGRESS }
                         BoltRideMapView(
-                            originMarket = "Bata Junction",
-                            originLgaId = selectedLgaFilter,
-                            destinationMarket = "Ariaria International Market",
-                            destinationLgaId = "aba_north",
+                            originMarket = myActiveTrip?.originMarket ?: "Bata Junction",
+                            originLgaId = myActiveTrip?.originLgaId ?: selectedLgaFilter,
+                            destinationMarket = myActiveTrip?.destinationMarket ?: "Ariaria International Market",
+                            destinationLgaId = myActiveTrip?.destinationLgaId ?: "aba_north",
                             userLiveLat = if (isDriverGpsLocked) driverLat else null,
                             userLiveLng = if (isDriverGpsLocked) driverLng else null,
+                            activeDriverLat = if (isDriverGpsLocked) driverLat else null,
+                            activeDriverLng = if (isDriverGpsLocked) driverLng else null,
+                            activeDriverPlate = userAccount?.tricyclePlateNo ?: "ABA-882-KU",
                             modifier = Modifier.fillMaxWidth().height(220.dp)
                         )
                     }

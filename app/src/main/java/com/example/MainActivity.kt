@@ -72,15 +72,20 @@ fun MainAppHost(repository: KekeGoRepository) {
     }
 
     DisposableEffect(Unit) {
-        val authListener = FirebaseAuth.AuthStateListener { auth ->
-            firebaseUser = auth.currentUser
-            if (auth.currentUser != null) {
+        val authListener = FirebaseAuth.AuthStateListener { a ->
+            firebaseUser = a.currentUser
+            if (a.currentUser != null) {
                 repository.initUserSession()
             }
         }
-        FirebaseManager.getAuth().addAuthStateListener(authListener)
+        try {
+            val auth = FirebaseManager.getAuth()
+            auth.addAuthStateListener(authListener)
+        } catch (_: Exception) {}
         onDispose {
-            FirebaseManager.getAuth().removeAuthStateListener(authListener)
+            try {
+                FirebaseManager.getAuth().removeAuthStateListener(authListener)
+            } catch (_: Exception) {}
         }
     }
 

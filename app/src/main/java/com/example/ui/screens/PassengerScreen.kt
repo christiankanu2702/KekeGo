@@ -278,6 +278,7 @@ fun PassengerScreen(
             }
 
             item {
+                val activeAssignedTrip = cachedTrips.firstOrNull { it.status == TripStatus.ACCEPTED || it.status == TripStatus.IN_PROGRESS }
                 BoltRideMapView(
                     originMarket = selectedOriginMarket,
                     originLgaId = selectedOriginLga,
@@ -286,6 +287,9 @@ fun PassengerScreen(
                     intermediateStops = intermediateStops,
                     userLiveLat = if (isLiveGpsLocked) liveLat else null,
                     userLiveLng = if (isLiveGpsLocked) liveLng else null,
+                    activeDriverLat = activeAssignedTrip?.driverLiveLat,
+                    activeDriverLng = activeAssignedTrip?.driverLiveLng,
+                    activeDriverPlate = activeAssignedTrip?.tricycleRegNo,
                     onMarketSelected = { selectedDestMarket = it }
                 )
 
