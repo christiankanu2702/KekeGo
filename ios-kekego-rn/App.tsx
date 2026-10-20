@@ -8,11 +8,16 @@ import { DriverScreen } from './src/screens/DriverScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
 
 export default function App() {
+  React.useEffect(() => {
+    CrashlyticsService.init();
+  }, []);
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
   const [activeViewRole, setActiveViewRole] = useState<UserRole>('PASSENGER');
 
   const handleSignIn = (user: UserAccount) => {
     setCurrentUser(user);
+    CrashlyticsService.setUserId(user.uid);
+    CrashlyticsService.setCustomKey("user_role", user.role);
     setActiveViewRole(user.role);
   };
 

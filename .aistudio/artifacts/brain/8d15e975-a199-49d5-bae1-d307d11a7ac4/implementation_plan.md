@@ -1,51 +1,21 @@
-# Automated GitHub Actions: Dual Deployment to Firebase Storage & Firebase App Distribution
+# Cloud Firestore Security Rules Lockdown Plan
 
-Build, version, and dual-deploy the KekeGo Android APK to both **Firebase Cloud Storage Bucket** (for direct public/private URL downloads) and **Firebase App Distribution** (for over-the-air tester installs), with dynamic build numbering and GitHub release artifacts.
-
----
-
-## User Review & Critical Decisions
-
-> [!IMPORTANT]
-> The workflow includes both Firebase endpoints:
-> 1. **Dynamic Version & Build Numbering**:
->    - `versionCode = System.getenv("BUILD_NUMBER")?.toIntOrNull() ?: 1`
->    - `versionName = System.getenv("APP_VERSION_NAME") ?: "1.0.0"`
->    - Dynamically incremented with each GitHub Actions execution `${{ github.run_number }}`.
-> 2. **Dual Firebase Deployment**:
->    - **Firebase Storage (`gs://gen-lang-client-0639805966.appspot.com/builds/`)**:
->      * Automatically uploads `kekego-v1.0.<build_number>.apk` to the storage bucket using `google-github-actions/upload-cloud-storage`.
->      * Generates a permanent download link for users and fleet operators.
->    - **Firebase App Distribution**:
->      * Automatically pushes the APK to Firebase App Distribution with release notes specifying the build number, tester group notifications, and invite links.
->    - **GitHub Artifacts**:
->      * Retains the raw APK artifact on GitHub for 30 days.
-> 3. **Non-Disruptive Local Environment**:
->    - Local compilation (`compile_applet`) remains clean with safe fallback defaults.
+Transition Cloud Firestore from permissive mode to strict, zero-trust Role-Based Access Control (RBAC).
 
 ---
 
-## 1. Automated Pipeline Architecture
+## 1. Zero-Trust Access Matrix
 
-```
-GitHub Push / Manual Trigger
-  │
-  ▼
-[ 1. Setup Java 17 & Android SDK ]
-  │
-  ▼
-[ 2. Tests & Lint Quality Check ]
-  │
-  ▼
-[ 3. Inject Version Code & Build Number ]
-     BUILD_NUMBER: ${{ github.run_number }}
-     APP_VERSION_NAME: 1.0.${{ github.run_number }}
-  │
-  ▼
-[ 4. Assemble Release APK (gradle assembleRelease) ]
-  │
-  ├───────────────────────┬────────────────────────┬───────────────────────┐
-  ▼                       ▼                        ▼                       ▼
-[ Firebase Storage ]    [ App Distribution ]     [ GitHub Artifacts ]    [ Telegram / Log ]
-gs://.../builds/*.apk   testers: "testers,fleet"  direct zip download     build success link
-```
+| Collection | Create | Read | Update | Delete |
+| :--- | :--- | :--- | :--- | :--- |
+| `/users/{userId}` | Authenticated user (`uid == userId`) | Authenticated | Owner or Super Admin | Super Admin only |
+| `/trips/{tripId}` | Passenger (`request.resource.data.passengerId == auth.uid`) | Booking Passenger, Assigned Driver, Open Dispatchers, Super Admin | Passenger (cancel/rate/tip) OR Assigned Driver (accept/telemetry/status) | Booking Passenger (if unaccepted) or Super Admin |
+| `/trips/{tripId}/messages/{msgId}` | Trip Participants (Passenger or Driver) | Trip Participants only | None (immutable audit trail) | Super Admin only |
+| `/bids/{bidId}` | Driver (`request.resource.data.driverId == auth.uid`) | Bidding Driver, Target Passenger, Super Admin | Bidding Driver only | Bidding Driver only |
+| `/parks/{parkId}` | Park Captain / Super Admin | All Authenticated | Park Captain / Super Admin | Super Admin only |
+| `/sos_alerts/{sosId}` | Any Authenticated user in distress | Regulators, Patrols, Super Admin | Regulators, Super Admin | Super Admin only |
+
+---
+
+## 2. Super Admin Master Authority
+`request.auth.token.email == 'christiankanu2702@gmail.com'` retains unrestricted global administrative access across all collections for emergency intervention, dispute resolution, and platform audits.

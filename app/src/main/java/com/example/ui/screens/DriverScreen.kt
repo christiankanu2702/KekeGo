@@ -30,6 +30,11 @@ import com.example.ui.components.PastTripsLogSheet
 import com.example.ui.components.SosFloatingTrigger
 import com.example.ui.theme.*
 import com.example.utils.LocationTracker
+import com.example.utils.KekeVoiceNavigationHelper
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.TurnRight
+import androidx.compose.material.icons.filled.Navigation
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,8 +47,29 @@ fun DriverScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
+
     val userAccount by repository.currentUserAccount.collectAsState()
     val trips by repository.getCachedTripsFlow().collectAsState(initial = emptyList())
+    val voiceNavHelper = remember { KekeVoiceNavigationHelper(context) }
+    var isVoiceMuted by remember { mutableStateOf(false) }
+    DisposableEffect(Unit) {
+        onDispose {
+            voiceNavHelper.shutdown()
+        }
+    }
+
+    // React to trip status changes with voice announcements
+    val activeTripForVoice = trips.firstOrNull { it.status == TripStatus.ACCEPTED || it.status == TripStatus.IN_PROGRESS }
+    LaunchedEffect(activeTripForVoice?.status) {
+        if (!isVoiceMuted && activeTripForVoice != null) {
+            when (activeTripForVoice.status) {
+                TripStatus.ACCEPTED -> voiceNavHelper.announceTripAccepted(activeTripForVoice.originMarket)
+                TripStatus.IN_PROGRESS -> voiceNavHelper.announceTripStarted(activeTripForVoice.destinationMarket)
+                TripStatus.COMPLETED -> voiceNavHelper.announceTripCompleted(activeTripForVoice.finalAgreedFareNaira)
+                else -> {}
+            }
+        }
+    }
 
     // Driver Live GPS
     var driverLat by remember { mutableDoubleStateOf(5.1118) }
@@ -287,20 +313,84 @@ fun DriverScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Live Google Maps SDK Corridor View for Drivers
+                        // Live Google Maps SDK Corridor View for Drivers with Turn-by-Turn Voice HUD
                         val myActiveTrip = trips.firstOrNull { it.status == TripStatus.ACCEPTED || it.status == TripStatus.IN_PROGRESS }
-                        BoltRideMapView(
-                            originMarket = myActiveTrip?.originMarket ?: "Bata Junction",
-                            originLgaId = myActiveTrip?.originLgaId ?: selectedLgaFilter,
-                            destinationMarket = myActiveTrip?.destinationMarket ?: "Ariaria International Market",
-                            destinationLgaId = myActiveTrip?.destinationLgaId ?: "aba_north",
-                            userLiveLat = if (isDriverGpsLocked) driverLat else null,
-                            userLiveLng = if (isDriverGpsLocked) driverLng else null,
-                            activeDriverLat = if (isDriverGpsLocked) driverLat else null,
-                            activeDriverLng = if (isDriverGpsLocked) driverLng else null,
-                            activeDriverPlate = userAccount?.tricyclePlateNo ?: "ABA-882-KU",
-                            modifier = Modifier.fillMaxWidth().height(220.dp)
-                        )
+                        Box(modifier = Modifier.fillMaxWidth().height(240.dp)) {
+                            BoltRideMapView(
+                                originMarket = myActiveTrip?.originMarket ?: "Bata Junction",
+                                originLgaId = myActiveTrip?.originLgaId ?: selectedLgaFilter,
+                                destinationMarket = myActiveTrip?.destinationMarket ?: "Ariaria International Market",
+                                destinationLgaId = myActiveTrip?.destinationLgaId ?: "aba_north",
+                                userLiveLat = if (isDriverGpsLocked) driverLat else null,
+                                userLiveLng = if (isDriverGpsLocked) driverLng else null,
+                                activeDriverLat = if (isDriverGpsLocked) driverLat else null,
+                                activeDriverLng = if (isDriverGpsLocked) driverLng else null,
+                                activeDriverPlate = userAccount?.tricyclePlateNo ?: "ABA-882-KU",
+                                modifier = Modifier.fillMaxSize()
+                            )
+
+                            // Top Turn-by-Turn Maneuver Pill (When Active Trip In Progress)
+                            if (myActiveTrip != null) {
+                                Surface(
+                                    color = Color(0xFF0C1017).copy(alpha = 0.94f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0xFF00E676)),
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(8.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.TurnRight,
+                                            contentDescription = null,
+                                            tint = Color(0xFF00E676),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column {
+                                            Text(
+                                                text = if (myActiveTrip.status == TripStatus.ACCEPTED) "To: ${myActiveTrip.originMarket}" else "To: ${myActiveTrip.destinationMarket}",
+                                                color = HighContrastWhite,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Black
+                                            )
+                                            Text(
+                                                text = if (myActiveTrip.status == TripStatus.ACCEPTED) "Pickup Point • 200m" else "Direct Transit Corridor • 450m",
+                                                color = SafetyAmber,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Voice Navigation Mute / Unmute Toggle Button
+                                IconButton(
+                                    onClick = {
+                                        isVoiceMuted = !isVoiceMuted
+                                        voiceNavHelper.isVoiceEnabled = !isVoiceMuted
+                                        if (!isVoiceMuted) {
+                                            voiceNavHelper.speak("Voice guidance enabled.")
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
+                                        .background(Color(0xFF161B22).copy(alpha = 0.92f), shape = RoundedCornerShape(10.dp))
+                                        .size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isVoiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                        contentDescription = if (isVoiceMuted) "Unmute Voice Guidance" else "Mute Voice Guidance",
+                                        tint = if (isVoiceMuted) MutedSilver else Color(0xFF00E676),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }

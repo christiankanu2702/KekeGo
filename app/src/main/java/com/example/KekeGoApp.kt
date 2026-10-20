@@ -11,6 +11,7 @@ class KekeGoApp : Application() {
             if (FirebaseApp.getApps(this).isEmpty()) {
                 val app = FirebaseApp.initializeApp(this)
                 Log.i("KekeGoApp", "FirebaseApp initialized successfully: ${app?.name}")
+                com.example.utils.CrashReportingTree.initialize()
             }
         } catch (e: Exception) {
             Log.e("KekeGoApp", "Failed to initialize FirebaseApp: ${e.message}", e)

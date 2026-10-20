@@ -1,70 +1,169 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ----------------------------------------------------
+    // HELPER FUNCTIONS & AUTHENTICATION PREDICATES
+    // ----------------------------------------------------
     function isAuthenticated() {
       return request.auth != null;
     }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Authoritative Users Collection
-    match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == 'christiankanu2702@gmail.com' ||
+         request.auth.token.role == 'ADMIN' ||
+         request.auth.token.role == 'SUPER_ADMIN');
     }
 
-    // Role-Partitioned Sub-Collections
+    // ----------------------------------------------------
+    // USER ACCOUNTS & IDENTITY REGISTRIES
+    // ----------------------------------------------------
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) || isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /users/{userId}/transactions/{txId} {
+      allow read, write: if isOwner(userId) || isSuperAdmin();
+    }
+
+    // Role-Partitioned Registry Collections
     match /passengers/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+      allow write: if isOwner(userId) || isSuperAdmin();
     }
 
     match /drivers/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+      allow write: if isOwner(userId) || isSuperAdmin();
     }
 
     match /park_captains/{userId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+      allow write: if isOwner(userId) || isSuperAdmin();
     }
 
     match /admins/{userId} {
-      allow read: if isAuthenticated();
-      allow write: if isOwner(userId);
+      allow read, write: if isSuperAdmin();
     }
 
-    match /users/{userId}/transactions/{txId} {
-      allow read, write: if isOwner(userId);
-    }
-
+    // ----------------------------------------------------
+    // COMMERCIAL TRICYCLE TRIPS & CORRIDOR DISPATCH
+    // ----------------------------------------------------
     match /trips/{tripId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
-      allow delete: if isAuthenticated() && resource.data.passengerId == request.auth.uid;
+      // Passengers can read their trips; Drivers can read open corridor requests or trips they are assigned to
+      allow read: if isAuthenticated() && (
+        resource.data.passengerId == request.auth.uid ||
+        resource.data.driverId == request.auth.uid ||
+        resource.data.status == 'REQUESTED' ||
+        isSuperAdmin()
+      );
+
+      // Only authenticated passengers can create trips in their own name
+      allow create: if isAuthenticated() && (
+        request.resource.data.passengerId == request.auth.uid ||
+        isSuperAdmin()
+      );
+
+      // Updates strictly governed by role:
+      // 1. Passengers can update status (CANCELLED), rating/tipping, OTP verification
+      // 2. Drivers can accept (assign driverId), update live GPS telemetry, or change status to IN_PROGRESS/COMPLETED
+      allow update: if isAuthenticated() && (
+        // Passenger updates their own trip
+        (resource.data.passengerId == request.auth.uid) ||
+        // Driver accepts an open requested trip
+        (resource.data.status == 'REQUESTED' && request.resource.data.driverId == request.auth.uid) ||
+        // Assigned driver updates active trip or live GPS telemetry
+        (resource.data.driverId == request.auth.uid) ||
+        isSuperAdmin()
+      );
+
+      // Only creator can cancel/delete unaccepted trips; Super Admin can purge
+      allow delete: if isAuthenticated() && (
+        (resource.data.passengerId == request.auth.uid && resource.data.status == 'REQUESTED') ||
+        isSuperAdmin()
+      );
+
+      // In-App Trip Messaging (Subcollection)
+      // Only the assigned driver and commuter can chat
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/trips/$(tripId)).data.passengerId == request.auth.uid ||
+          get(/databases/$(database)/documents/trips/$(tripId)).data.driverId == request.auth.uid ||
+          isSuperAdmin()
+        );
+        allow create: if isAuthenticated() && (
+          get(/databases/$(database)/documents/trips/$(tripId)).data.passengerId == request.auth.uid ||
+          get(/databases/$(database)/documents/trips/$(tripId)).data.driverId == request.auth.uid ||
+          isSuperAdmin()
+        );
+        allow update, delete: if isSuperAdmin();
+      }
     }
 
+    // ----------------------------------------------------
+    // FARE BIDDING SYSTEM
+    // ----------------------------------------------------
     match /bids/{bidId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated();
-      allow delete: if isAuthenticated() && resource.data.driverId == request.auth.uid;
+      allow read: if isAuthenticated() && (
+        resource.data.driverId == request.auth.uid ||
+        isSuperAdmin()
+      );
+      // Drivers can only create bids under their own verified ID
+      allow create: if isAuthenticated() && (
+        request.resource.data.driverId == request.auth.uid ||
+        isSuperAdmin()
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.driverId == request.auth.uid ||
+        isSuperAdmin()
+      );
     }
 
+    // ----------------------------------------------------
+    // PARK TERMINALS & QUEUES (ATRWAN / MIN OF TRANSPORT)
+    // ----------------------------------------------------
     match /parks/{parkId} {
-      allow read, write: if isAuthenticated();
+      // All commuters and riders can check park terminals and queues
+      allow read: if isAuthenticated();
+      // Only registered park captains and Super Admin can manage manifests
+      allow create, update: if isAuthenticated() && (
+        exists(/databases/$(database)/documents/park_captains/$(request.auth.uid)) ||
+        isSuperAdmin()
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    // ----------------------------------------------------
+    // SAFETY, SOS ALERTS & DISPUTES
+    // ----------------------------------------------------
+    match /sos_alerts/{sosId} {
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isSuperAdmin()
+      );
+      allow delete: if isSuperAdmin();
     }
 
     match /disputes/{disputeId} {
-      allow read, write: if isAuthenticated();
-    }
-
-    match /sos_alerts/{sosId} {
-      allow read, write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isSuperAdmin()
+      );
+      allow update, delete: if isSuperAdmin();
     }
 
     match /telemetry_audit_logs/{logId} {
-      allow read, write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isSuperAdmin();
     }
   }
 }

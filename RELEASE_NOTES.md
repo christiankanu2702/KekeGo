@@ -1,6 +1,7 @@
 # KekeGo v1.0.0 Release Notes
 
-**Version:** 1.0.0  
+**App Version Name:** `1.0.0` (dynamically stamps as `1.0.${{ github.run_number }}` during GitHub Actions builds, e.g., `1.0.1`, `1.0.2`)  
+**Version Code / Build Number:** `1` (automatically increments with each workflow run)  
 **Target Platform:** Android (7.0+) & iOS (15.1+)  
 **Category:** Urban Transit, Ride-Hailing & Logistics  
 

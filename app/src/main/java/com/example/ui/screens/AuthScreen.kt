@@ -32,6 +32,12 @@ import com.example.data.models.AbiaCorridorData
 import com.example.data.models.DriverServiceFilter
 import com.example.data.models.UserRole
 import com.example.ui.theme.*
+import com.example.utils.MlKitDocumentScanner
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.SmartToy
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.GoogleAuthProvider
@@ -49,6 +55,8 @@ fun AuthScreen(
     val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isScanningPermit by remember { mutableStateOf(false) }
+    var scanSuccessMessage by remember { mutableStateOf<String?>(null) }
     var selectedRole by remember { mutableStateOf(UserRole.PASSENGER) }
 
     // Role-Specific Compliance Registration Fields
@@ -69,6 +77,29 @@ fun AuthScreen(
 
     // Admin Specific
     var adminDepartment by remember { mutableStateOf("Abia State Ministry of Transport Operations") }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                isScanningPermit = true
+                val result = MlKitDocumentScanner.scanDocumentFromUri(context, uri)
+                if (result.detectedPlateNumber != null) {
+                    tricyclePlateNo = result.detectedPlateNumber
+                }
+                if (result.detectedPermitNumber != null) {
+                    riderPermitId = result.detectedPermitNumber
+                }
+                scanSuccessMessage = if (result.detectedPlateNumber != null || result.detectedPermitNumber != null) {
+                    "Auto-detected: ${result.detectedPlateNumber ?: ""} ${result.detectedPermitNumber ?: ""}"
+                } else {
+                    "Scanned image text processed. Check extracted fields."
+                }
+                isScanningPermit = false
+            }
+        }
+    }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -477,6 +508,37 @@ fun AuthScreen(
                         text = "Instant Demo (${selectedRole.name.replace("_", " ")})",
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // User-Facing Version Badge
+                val pVersionName = remember {
+                    try {
+                        val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                        val code = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                            pInfo.longVersionCode
+                        } else {
+                            @Suppress("DEPRECATION")
+                            pInfo.versionCode.toLong()
+                        }
+                        "v${pInfo.versionName ?: "1.0.0"} (Build $code)"
+                    } catch (e: Exception) {
+                        "v1.0.0 (Build 1)"
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "KekeGo $pVersionName • Abia State Transit",
+                        color = MutedSilver.copy(alpha = 0.7f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
 

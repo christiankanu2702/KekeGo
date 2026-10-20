@@ -34,6 +34,8 @@ import com.example.data.models.*
 import com.example.data.repository.*
 import com.example.ui.components.*
 import com.example.ui.theme.*
+import com.example.ui.components.GeminiWaybillAssistantDialog
+import androidx.compose.material.icons.filled.AutoAwesome
 import com.example.utils.LocationTracker
 import com.example.utils.SmsHelper
 import kotlinx.coroutines.launch
@@ -129,6 +131,7 @@ fun PassengerScreen(
     var showAddSavedPlaceDialog by remember { mutableStateOf(false) }
     var showScheduleModal by remember { mutableStateOf(false) }
     var showTripChatDialog by remember { mutableStateOf(false) }
+    var showGeminiAssistantDialog by remember { mutableStateOf(false) }
     var showRatingDialog by remember { mutableStateOf(false) }
     var completedTripToRate by remember { mutableStateOf<Trip?>(null) }
     var selectedRideTier by remember { mutableStateOf(BoltRideTier.STANDARD) }
@@ -300,6 +303,37 @@ fun PassengerScreen(
                     selectedTier = selectedRideTier,
                     onTierSelected = { selectedRideTier = it }
                 )
+
+                // Gemini AI Waybill & Fare Valuator Trigger
+                Surface(
+                    color = Color(0xFF1E142B),
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF8A2BE2).copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color(0xFFBA68C8), modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Gemini AI Cargo Valuator", color = HighContrastWhite, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Auto-estimate freight volume & fair market price", color = Color(0xFFBA68C8), fontSize = 10.sp)
+                            }
+                        }
+                        Button(
+                            onClick = { showGeminiAssistantDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8A2BE2), contentColor = Color.White),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Analyze", fontSize = 11.sp, fontWeight = FontWeight.Black)
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 

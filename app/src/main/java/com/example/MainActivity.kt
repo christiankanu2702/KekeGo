@@ -3,6 +3,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -192,8 +193,17 @@ fun AppContent(repository: KekeGoRepository) {
                             )
                         }
                         Spacer(modifier = Modifier.width(6.dp))
+                        val ctx = LocalContext.current
+                        val appVersionText = remember {
+                            try {
+                                val pInfo = ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+                                "v${pInfo.versionName ?: "1.0.0"}"
+                            } catch (_: Exception) {
+                                "v1.0.0"
+                            }
+                        }
                         Text(
-                            text = "Abia State, NG",
+                            text = "Abia State • $appVersionText",
                             color = MutedSilver,
                             fontSize = 10.sp
                         )
@@ -218,55 +228,80 @@ fun AppContent(repository: KekeGoRepository) {
                             Spacer(modifier = Modifier.width(4.dp))
                         }
 
-                        Box {
-                            TextButton(
-                                onClick = { showRoleSwitchMenu = true },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "View As: ${userAccount?.role?.name ?: "PASSENGER"}",
-                                    color = SafetyAmber,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.ArrowDropDown,
-                                    contentDescription = null,
-                                    tint = SafetyAmber,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-
-                        DropdownMenu(
-                            expanded = showRoleSwitchMenu,
-                            onDismissRequest = { showRoleSwitchMenu = false },
-                            modifier = Modifier.background(AsphaltDark)
-                        ) {
-                            UserRole.entries.forEach { role ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            role.name.replace("_", " "),
-                                            color = HighContrastWhite,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    },
-                                    onClick = {
-                                        repository.switchUserRole(role)
-                                        showRoleSwitchMenu = false
-                                    }
-                                )
-                            }
-                            HorizontalDivider(color = AsphaltDivider)
-                            DropdownMenuItem(
-                                text = { Text("Sign Out", color = ErrorRed, fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    FirebaseManager.getAuth().signOut()
-                                    showRoleSwitchMenu = false
+                        if (isSuperAdmin) {
+                            Box {
+                                TextButton(
+                                    onClick = { showRoleSwitchMenu = true },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "View As: ${userAccount?.role?.name ?: "PASSENGER"}",
+                                        color = SafetyAmber,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = SafetyAmber,
+                                        modifier = Modifier.size(16.dp)
+                                    )
                                 }
-                            )
+
+                                DropdownMenu(
+                                    expanded = showRoleSwitchMenu,
+                                    onDismissRequest = { showRoleSwitchMenu = false },
+                                    modifier = Modifier.background(AsphaltDark)
+                                ) {
+                                    UserRole.entries.forEach { role ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    role.name.replace("_", " "),
+                                                    color = HighContrastWhite,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            },
+                                            onClick = {
+                                                repository.switchUserRole(role)
+                                                showRoleSwitchMenu = false
+                                            }
+                                        )
+                                    }
+                                    HorizontalDivider(color = AsphaltDivider)
+                                    DropdownMenuItem(
+                                        text = { Text("Sign Out", color = ErrorRed, fontWeight = FontWeight.Bold) },
+                                        onClick = {
+                                            FirebaseManager.getAuth().signOut()
+                                            showRoleSwitchMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    color = AsphaltCard,
+                                    shape = RoundedCornerShape(4.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, AsphaltDivider)
+                                ) {
+                                    Text(
+                                        text = userAccount?.role?.name ?: "PASSENGER",
+                                        color = EmeraldGreen,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                TextButton(
+                                    onClick = { FirebaseManager.getAuth().signOut() },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text("Sign Out", color = ErrorRed, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
-                    }
                     }
                 }
             }
